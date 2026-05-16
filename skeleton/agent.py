@@ -354,6 +354,11 @@ def _execute_tool(
         elif tool_name == "make_booking":
             if not current_user_email:
                 return json.dumps({"error": "You must be logged in to make a booking."})
+            req_keys = ["schedule_id", "origin_station_id", "destination_station_id", "travel_date", "fare_class", "seat_id"]
+            missing = [k for k in req_keys if k not in params]
+            if missing:
+                return json.dumps({"error": f"Missing required parameters: {', '.join(missing)}. Please check availability first to find the schedule_id."})
+            
             profile = query_user_profile(current_user_email)
             if not profile:
                 return json.dumps({"error": "User profile not found."})
