@@ -116,7 +116,7 @@ def query_national_rail_fare(
                 if row:
                     base = float(row['base_fare_usd'])
                     rate = float(row['per_stop_rate_usd'])
-                    total = base + (stops_travelled * rate)
+                    total = base + (int(stops_travelled) * rate)
                     row_dict = dict(row)
                     row_dict['base_fare_usd'] = base
                     row_dict['per_stop_rate_usd'] = rate
@@ -178,7 +178,7 @@ def query_metro_fare(schedule_id: str, stops_travelled: int) -> Optional[dict]:
                 if row:
                     base = float(row['base_fare_usd'])
                     rate = float(row['per_stop_rate_usd'])
-                    total = base + (stops_travelled * rate)
+                    total = base + (int(stops_travelled) * rate)
                     row_dict = dict(row)
                     row_dict['base_fare_usd'] = base
                     row_dict['per_stop_rate_usd'] = rate

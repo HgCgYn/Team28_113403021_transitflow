@@ -59,8 +59,7 @@ CREATE TABLE IF NOT EXISTS metro_stations (
     is_interchange_metro                BOOLEAN      NOT NULL DEFAULT FALSE,
     is_interchange_national_rail        BOOLEAN      NOT NULL DEFAULT FALSE,
     -- FK to national_rail_stations added below (circular dependency)
-    interchange_national_rail_station_id VARCHAR(10) REFERENCES national_rail_stations(station_id)
-        DEFERRABLE INITIALLY DEFERRED
+    interchange_national_rail_station_id VARCHAR(10)
 );
 
 CREATE TABLE IF NOT EXISTS national_rail_stations (
@@ -71,6 +70,9 @@ CREATE TABLE IF NOT EXISTS national_rail_stations (
     interchange_metro_station_id VARCHAR(10)  REFERENCES metro_stations(station_id)
         DEFERRABLE INITIALLY DEFERRED
 );
+
+ALTER TABLE metro_stations ADD CONSTRAINT fk_metro_national_rail
+FOREIGN KEY (interchange_national_rail_station_id) REFERENCES national_rail_stations(station_id) DEFERRABLE INITIALLY DEFERRED;
 
 -- lines[] on each station → fully normalised junction table
 -- PK = (station_id, line) — a station may serve multiple lines
