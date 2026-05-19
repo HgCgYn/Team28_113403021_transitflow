@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import random
 import string
 from datetime import datetime, timezone, date
@@ -10,6 +11,7 @@ from typing import Optional
 
 import psycopg2
 import psycopg2.extras
+from passlib.hash import argon2
 
 from skeleton.config import PG_DSN, VECTOR_TOP_K, VECTOR_SIMILARITY_THRESHOLD
 
@@ -83,8 +85,8 @@ def query_national_rail_availability(
                     formatted_row["frequency_min"] = 30
                     results.append(formatted_row)
                     
-    except Exception as e:
-        print(f"Error executing query_national_rail_availability: {e}")
+    except psycopg2.DatabaseError as e:
+        logging.error(f"Error executing query_national_rail_availability: {e}")
         return []
 
     return results
@@ -338,7 +340,7 @@ def execute_booking(
             conn.commit()
             return True, _serialize_dates(booking_record)
             
-    except Exception as e:
+    except psycopg2.DatabaseError as e:
         conn.rollback()
         return False, str(e)
     finally:
@@ -388,7 +390,7 @@ def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | st
                 "refund_amount_usd": refund_amount,
                 "policy_note": f"Refund tier calculated at {refund_pct*100}% utilizing {booking['service_type']} tier rules."
             }
-    except Exception as e:
+    except psycopg2.DatabaseError as e:
         conn.rollback()
         return False, str(e)
     finally:
@@ -417,14 +419,15 @@ def register_user(
     
     conn = psycopg2.connect(PG_DSN)
     try:
+        hashed_password = argon2.hash(password)
         with conn.cursor() as cur:
             cur.execute(sql_check, (email,))
             if cur.fetchone():
                 return False, "This email allocation has already been claimed."
-            cur.execute(sql_ins, (uid, full_name, first_name, surname, email, year_of_birth, password, secret_question, secret_answer))
+            cur.execute(sql_ins, (uid, full_name, first_name, surname, email, year_of_birth, hashed_password, secret_question, secret_answer))
             conn.commit()
             return True, uid
-    except Exception as e:
+    except psycopg2.DatabaseError as e:
         conn.rollback()
         return False, str(e)
     finally:
@@ -434,14 +437,21 @@ def register_user(
 def login_user(email: str, password: str) -> Optional[dict]:
     """Verify credentials."""
     sql = """
-        SELECT user_id, email, full_name, first_name, surname, phone, date_of_birth, is_active 
-        FROM users WHERE email = %s AND password = %s
+        SELECT user_id, email, full_name, first_name, surname, phone, date_of_birth, is_active, password as hashed_password 
+        FROM users WHERE email = %s
     """
     with _connect() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql, (email, password))
+            cur.execute(sql, (email,))
             row = cur.fetchone()
-            return _serialize_dates(row) if row else None
+            if row:
+                try:
+                    if argon2.verify(password, row["hashed_password"]):
+                        del row["hashed_password"]
+                        return _serialize_dates(row)
+                except Exception:
+                    pass
+            return None
 
 
 def get_user_secret_question(email: str) -> Optional[str]:
@@ -471,12 +481,13 @@ def update_password(email: str, new_password: str) -> bool:
     sql = "UPDATE users SET password = %s WHERE email = %s"
     conn = psycopg2.connect(PG_DSN)
     try:
+        hashed_password = argon2.hash(new_password)
         with conn.cursor() as cur:
-            cur.execute(sql, (new_password, email))
+            cur.execute(sql, (hashed_password, email))
             affected = cur.rowcount
             conn.commit()
             return affected > 0
-    except Exception:
+    except psycopg2.DatabaseError:
         conn.rollback()
         return False
     finally:

@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone           VARCHAR(50),
     date_of_birth   DATE,
     year_of_birth   INT,
-    password        VARCHAR(255), -- Stored plain text for teaching context
+    password        VARCHAR(255), -- Argon2 hashed password
     secret_question TEXT,
     secret_answer   TEXT,
     is_active       BOOLEAN DEFAULT TRUE,
