@@ -55,6 +55,16 @@
       "E-scooters and hoverboards",
       "Items emitting strong odours that may cause discomfort to other passengers"
     ],
+    "lost_property": {
+      "reporting": "Lost property can be reported via the in-app help desk or at any major station ticket office.",
+      "storage": "Found items are held at the Central Station Lost Property Office for a maximum of 30 days.",
+      "retrieval_fee": "A standard administration fee of $5.00 applies when successfully retrieving a lost item (waived for essential documents like passports/IDs)."
+    },
+    "photography_and_filming": {
+      "personal_use": "Personal, non-commercial photography is permitted on trains and platforms provided it does not obstruct staff or compromise safety.",
+      "commercial_use": "Commercial filming or photography requires prior written authorization from the TransitFlow press office.",
+      "flash_photography": "Flash photography is strictly prohibited on platforms as it can distract train drivers."
+    },
     "smoking_and_vaping": "Strictly prohibited on all metro carriages, platforms, and station concourses.",
     "noise": "Passengers are asked to keep noise to a considerate level. Use of personal audio devices with external speakers is not permitted."
   },
@@ -131,6 +141,16 @@
       "E-scooters and hoverboards",
       "Items emitting strong odours that may cause discomfort to other passengers"
     ],
+    "lost_property": {
+      "reporting": "Lost property can be reported via the in-app help desk or at any major station ticket office.",
+      "storage": "Found items are held at the Central Station Lost Property Office for a maximum of 30 days.",
+      "retrieval_fee": "A standard administration fee of $5.00 applies when successfully retrieving a lost item (waived for essential documents like passports/IDs)."
+    },
+    "photography_and_filming": {
+      "personal_use": "Personal, non-commercial photography is permitted on trains and platforms provided it does not obstruct staff or compromise safety.",
+      "commercial_use": "Commercial filming or photography requires prior written authorization from the TransitFlow press office.",
+      "flash_photography": "Flash photography is strictly prohibited on platforms as it can distract train drivers."
+    },
     "smoking_and_vaping": "Strictly prohibited on all train carriages and at all station platforms.",
     "conduct": "Passengers behaving in a manner that causes distress or danger to other passengers or staff may be removed from the train. In serious cases, the operator reserves the right to involve law enforcement."
   }

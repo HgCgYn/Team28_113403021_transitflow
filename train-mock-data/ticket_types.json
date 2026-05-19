@@ -73,5 +73,26 @@
       "refund_rule": "RF004",
       "notes": "A day pass offers better value than individual single tickets for passengers making 3 or more metro trips in a day. Tap in and out normally at each station."
     }
+  },
+  {
+    "ticket_type": "weekly_pass",
+    "display_name": "Metro Weekly Pass",
+    "available_on": ["metro"],
+    "description": "Unlimited travel on all metro lines (M1, M2, M3, M4) for seven consecutive calendar days. Not valid on national rail services.",
+    "metro": {
+      "pricing_model": "flat_rate",
+      "price_usd": 25.00,
+      "fare_class": null,
+      "seat_assignment": false,
+      "unlimited_journeys": true,
+      "valid_lines": ["M1", "M2", "M3", "M4"],
+      "validity": "Seven consecutive calendar days starting from the date of purchase. Expires at 23:59 on the seventh day.",
+      "advance_purchase": false,
+      "changes_allowed": false,
+      "transferable": false,
+      "refundable": true,
+      "refund_rule": "RF004",
+      "notes": "Offers the best value for daily commuters travelling 5 or more days a week."
+    }
   }
 ]
