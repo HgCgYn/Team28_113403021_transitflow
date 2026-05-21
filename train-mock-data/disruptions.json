@@ -1,0 +1,32 @@
+[
+  {
+    "disruption_id": "DS-001",
+    "disruption_type": "engineering",
+    "affected_lines": ["M1"],
+    "start_datetime": "2024-11-20T00:00:00Z",
+    "end_datetime": "2024-11-22T04:00:00Z",
+    "description": "Planned engineering works on the M1 line. Stations between MS01 and MS05 will be closed.",
+    "replacement_service": "Bus replacements running every 10 minutes between MS01 and MS05",
+    "created_at": "2024-11-01T10:00:00Z"
+  },
+  {
+    "disruption_id": "DS-002",
+    "disruption_type": "emergency",
+    "affected_lines": ["NR1", "NR2"],
+    "start_datetime": "2024-11-25T08:00:00Z",
+    "end_datetime": null,
+    "description": "Emergency services dealing with an incident at Central Station. All lines through Central Station are suspended.",
+    "replacement_service": "Ticket acceptance on local bus services.",
+    "created_at": "2024-11-25T08:05:00Z"
+  },
+  {
+    "disruption_id": "DS-003",
+    "disruption_type": "weather",
+    "affected_lines": ["NR2"],
+    "start_datetime": "2024-12-05T06:00:00Z",
+    "end_datetime": "2024-12-05T20:00:00Z",
+    "description": "Severe flooding on the tracks between NR08 and NR10. Trains are running at reduced speed or terminating early.",
+    "replacement_service": null,
+    "created_at": "2024-12-04T18:00:00Z"
+  }
+]

@@ -44,6 +44,8 @@ CREATE TYPE payment_method_enum       AS ENUM ('credit_card', 'debit_card', 'ewa
 CREATE TYPE payment_status_enum       AS ENUM ('paid', 'refunded', 'pending');
 CREATE TYPE booking_type_enum         AS ENUM ('rail', 'metro');
 CREATE TYPE day_of_week_enum          AS ENUM ('mon','tue','wed','thu','fri','sat','sun');
+CREATE TYPE season_ticket_type_enum   AS ENUM ('weekly', 'monthly', 'annual');
+CREATE TYPE disruption_type_enum      AS ENUM ('engineering', 'emergency', 'weather', 'other');
 
 
 -- ============================================================
@@ -224,7 +226,8 @@ CREATE TABLE IF NOT EXISTS users (
     phone         VARCHAR(20),
     date_of_birth DATE,
     registered_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    is_active     BOOLEAN      NOT NULL DEFAULT TRUE
+    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
+    loyalty_points INT         NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS user_credentials (
@@ -306,6 +309,39 @@ CREATE TABLE IF NOT EXISTS feedback (
     rating        SMALLINT          NOT NULL CHECK (rating BETWEEN 1 AND 5),
     comment       TEXT,
     submitted_at  TIMESTAMPTZ       NOT NULL DEFAULT NOW()
+);
+
+
+CREATE TABLE IF NOT EXISTS delay_records (
+    delay_id     VARCHAR(20) PRIMARY KEY,
+    schedule_id  VARCHAR(20) NOT NULL REFERENCES national_rail_schedules(schedule_id),
+    travel_date  DATE NOT NULL,
+    delay_min    SMALLINT NOT NULL CHECK (delay_min > 0),
+    reason       TEXT,
+    reported_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS season_tickets (
+    season_ticket_id  VARCHAR(20) PRIMARY KEY,
+    user_id           UUID NOT NULL REFERENCES users(user_id),
+    ticket_type       season_ticket_type_enum NOT NULL,
+    valid_from        DATE NOT NULL,
+    valid_until       DATE NOT NULL,
+    price_usd         NUMERIC(10,2) NOT NULL,
+    network           VARCHAR(10) NOT NULL CHECK (network IN ('metro', 'rail', 'all')),
+    status            VARCHAR(20) NOT NULL DEFAULT 'active',
+    purchased_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS disruptions (
+    disruption_id   VARCHAR(20) PRIMARY KEY,
+    disruption_type disruption_type_enum NOT NULL,
+    affected_lines  TEXT[] NOT NULL,
+    start_datetime  TIMESTAMPTZ NOT NULL,
+    end_datetime    TIMESTAMPTZ,
+    description     TEXT NOT NULL,
+    replacement_service TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 

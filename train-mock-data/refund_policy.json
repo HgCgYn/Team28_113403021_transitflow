@@ -170,5 +170,15 @@
       }
     ],
     "exclusions": "Delays caused by third-party events (extreme weather, security incidents, government directives, or passenger-caused incidents) are not eligible for compensation."
+  },
+  {
+    "policy_id": "RF006",
+    "label": "Lost Property / Compensatory Travel",
+    "applies_to": {
+      "network_type": "all",
+      "ticket_types": ["single", "return", "day_pass", "season"]
+    },
+    "cancellation_windows": [],
+    "notes": "Passengers travelling to collect lost property are not entitled to free travel or refunds for that journey."
   }
 ]

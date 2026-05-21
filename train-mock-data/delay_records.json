@@ -1,0 +1,42 @@
+[
+  {
+    "delay_id": "DR-001",
+    "schedule_id": "NR_SCH01",
+    "travel_date": "2024-10-15",
+    "delay_min": 45,
+    "reason": "Signal failure at Central Station",
+    "reported_at": "2024-10-15T08:30:00Z"
+  },
+  {
+    "delay_id": "DR-002",
+    "schedule_id": "NR_SCH03",
+    "travel_date": "2024-10-16",
+    "delay_min": 15,
+    "reason": "Late arrival of incoming train",
+    "reported_at": "2024-10-16T09:15:00Z"
+  },
+  {
+    "delay_id": "DR-003",
+    "schedule_id": "NR_SCH05",
+    "travel_date": "2024-10-17",
+    "delay_min": 120,
+    "reason": "Severe weather conditions",
+    "reported_at": "2024-10-17T11:00:00Z"
+  },
+  {
+    "delay_id": "DR-004",
+    "schedule_id": "NR_SCH02",
+    "travel_date": "2024-10-18",
+    "delay_min": 60,
+    "reason": "Train fault requiring replacement",
+    "reported_at": "2024-10-18T14:20:00Z"
+  },
+  {
+    "delay_id": "DR-005",
+    "schedule_id": "NR_SCH04",
+    "travel_date": "2024-10-19",
+    "delay_min": 35,
+    "reason": "Trespassers on the track",
+    "reported_at": "2024-10-19T16:45:00Z"
+  }
+]

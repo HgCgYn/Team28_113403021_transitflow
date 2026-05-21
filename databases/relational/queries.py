@@ -11,10 +11,8 @@ TWO ROLES ARE SERVED HERE:
 
 from __future__ import annotations
 
-import json
-import random
-import string
 import logging
+import secrets
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -45,13 +43,15 @@ def _connect():
     return conn
 
 
+# NOTE: Uses secrets module (cryptographically secure PRNG) instead of random,
+# and a longer suffix (16 hex chars = 64 bits) to make ID collisions negligible.
 def _gen_booking_id() -> str:
-    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    suffix = secrets.token_hex(8).upper()  # 64-bit entropy
     return f"BK-{suffix}"
 
 
 def _gen_payment_id() -> str:
-    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    suffix = secrets.token_hex(8).upper()  # 64-bit entropy
     return f"PM-{suffix}"
 
 
@@ -808,13 +808,85 @@ def update_password(email: str, new_password: str) -> bool:
         with _connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, (pw_hash, email))
-                return cur.rowcount > 0
+                conn.commit()
+                return True
     except psycopg2.Error as e:
+        conn.rollback()
         logger.error(f"DB Error in update_password: {e}")
         return False
     except Exception as e:
         logger.error(f"Error in update_password: {e}")
         return False
+
+
+# ── EXTENSION QUERIES ─────────────────────────────────────────────────────────
+
+def query_delay_records(schedule_id: str, travel_date: str) -> list[dict]:
+    """Return delay records for a specific schedule and date."""
+    sql = """
+        SELECT delay_id, schedule_id, travel_date::text, delay_min, reason, reported_at::text
+        FROM delay_records
+        WHERE schedule_id = %s AND travel_date = %s::date
+    """
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (schedule_id, travel_date))
+                return [dict(row) for row in cur.fetchall()]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_delay_records: {e}")
+        return []
+
+def query_season_tickets(user_email: str) -> list[dict]:
+    """Return season tickets for a user."""
+    sql = """
+        SELECT st.season_ticket_id, st.ticket_type, st.valid_from::text, st.valid_until::text, st.price_usd, st.network, st.status, st.purchased_at::text
+        FROM season_tickets st
+        JOIN users u ON st.user_id = u.user_id
+        WHERE u.email = %s
+    """
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (user_email,))
+                rows = cur.fetchall()
+                for row in rows:
+                    row['price_usd'] = float(row['price_usd'])
+                return [dict(row) for row in rows]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_season_tickets: {e}")
+        return []
+
+def query_loyalty_points(user_email: str) -> int:
+    """Return loyalty points for a user."""
+    sql = "SELECT loyalty_points FROM users WHERE email = %s"
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (user_email,))
+                row = cur.fetchone()
+                if row:
+                    return row[0]
+                return 0
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_loyalty_points: {e}")
+        return 0
+
+def query_disruptions() -> list[dict]:
+    """Return all active disruptions."""
+    sql = """
+        SELECT disruption_id, disruption_type, affected_lines, start_datetime::text, end_datetime::text, description, replacement_service, created_at::text
+        FROM disruptions
+        ORDER BY start_datetime DESC
+    """
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql)
+                return [dict(row) for row in cur.fetchall()]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_disruptions: {e}")
+        return []
 
 
 # ── VECTOR / RAG QUERIES — do not modify ─────────────────────────────────────
@@ -833,10 +905,14 @@ def query_policy_vector_search(embedding: list[float], top_k: int = VECTOR_TOP_K
         LIMIT %s
     """
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
-    with _connect() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql, (vec_str, vec_str, VECTOR_SIMILARITY_THRESHOLD, vec_str, top_k))
-            return [dict(row) for row in cur.fetchall()]
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (vec_str, vec_str, VECTOR_SIMILARITY_THRESHOLD, vec_str, top_k))
+                return [dict(row) for row in cur.fetchall()]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_policy_vector_search: {e}")
+        return []
 
 
 def store_policy_document(
@@ -853,7 +929,11 @@ def store_policy_document(
         RETURNING id
     """
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
-    with _connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, (title, category, content, vec_str, source_file))
-            return cur.fetchone()[0]
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (title, category, content, vec_str, source_file))
+                return cur.fetchone()[0]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in store_policy_document: {e}")
+        raise
