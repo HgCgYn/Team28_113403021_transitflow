@@ -11,10 +11,8 @@ TWO ROLES ARE SERVED HERE:
 
 from __future__ import annotations
 
-import json
-import random
-import string
 import logging
+import secrets
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -45,13 +43,15 @@ def _connect():
     return conn
 
 
+# NOTE: Uses secrets module (cryptographically secure PRNG) instead of random,
+# and a longer suffix (16 hex chars = 64 bits) to make ID collisions negligible.
 def _gen_booking_id() -> str:
-    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    suffix = secrets.token_hex(8).upper()  # 64-bit entropy
     return f"BK-{suffix}"
 
 
 def _gen_payment_id() -> str:
-    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    suffix = secrets.token_hex(8).upper()  # 64-bit entropy
     return f"PM-{suffix}"
 
 
@@ -833,10 +833,14 @@ def query_policy_vector_search(embedding: list[float], top_k: int = VECTOR_TOP_K
         LIMIT %s
     """
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
-    with _connect() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(sql, (vec_str, vec_str, VECTOR_SIMILARITY_THRESHOLD, vec_str, top_k))
-            return [dict(row) for row in cur.fetchall()]
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (vec_str, vec_str, VECTOR_SIMILARITY_THRESHOLD, vec_str, top_k))
+                return [dict(row) for row in cur.fetchall()]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_policy_vector_search: {e}")
+        return []
 
 
 def store_policy_document(
@@ -853,7 +857,11 @@ def store_policy_document(
         RETURNING id
     """
     vec_str = "[" + ",".join(str(x) for x in embedding) + "]"
-    with _connect() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, (title, category, content, vec_str, source_file))
-            return cur.fetchone()[0]
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (title, category, content, vec_str, source_file))
+                return cur.fetchone()[0]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in store_policy_document: {e}")
+        raise

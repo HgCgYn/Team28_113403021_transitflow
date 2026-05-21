@@ -41,13 +41,11 @@ def seed():
         for st in metro_stations:
             session.run(
                 """
-                CREATE (m:Station:MetroStation {
-                    station_id: $id,
-                    name: $name,
-                    lines: $lines,
-                    is_interchange_national_rail: $is_interchange,
-                    interchange_national_rail_station_id: $interchange_id
-                })
+                MERGE (m:Station:MetroStation {station_id: $id})
+                SET m.name = $name,
+                    m.lines = $lines,
+                    m.is_interchange_national_rail = $is_interchange,
+                    m.interchange_national_rail_station_id = $interchange_id
                 """,
                 id=st["station_id"],
                 name=st["name"],
@@ -60,13 +58,11 @@ def seed():
         for st in rail_stations:
             session.run(
                 """
-                CREATE (r:Station:NationalRailStation {
-                    station_id: $id,
-                    name: $name,
-                    lines: $lines,
-                    is_interchange_metro: $is_interchange,
-                    interchange_metro_station_id: $interchange_id
-                })
+                MERGE (r:Station:NationalRailStation {station_id: $id})
+                SET r.name = $name,
+                    r.lines = $lines,
+                    r.is_interchange_metro = $is_interchange,
+                    r.interchange_metro_station_id = $interchange_id
                 """,
                 id=st["station_id"],
                 name=st["name"],

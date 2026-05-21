@@ -554,7 +554,9 @@ def run_agent(
     if current_user_email:
         profile = query_user_profile(current_user_email)
         if profile:
-            user_display = f"{profile['full_name']} (email: {current_user_email}, user_id: {profile['user_id']})"
+            # NOTE: Intentionally exclude user_id (UUID) from LLM context — it is an internal
+            # DB identifier and should never appear in prompts or debug output.
+            user_display = f"{profile['full_name']} (email: {current_user_email})"
         else:
             user_display = current_user_email
         contextual_prompt = SYSTEM_PROMPT + (
