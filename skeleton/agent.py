@@ -47,6 +47,10 @@ from databases.relational.queries import (
     execute_booking,
     execute_cancellation,
     query_policy_vector_search,
+    query_delay_records,
+    query_season_tickets,
+    query_loyalty_points,
+    query_disruptions,
 )
 from databases.graph.queries import (
     query_shortest_route,
@@ -272,6 +276,33 @@ TOOLS = [
         },
         "required": ["station_id"],
     },
+    {
+        "name": "get_delay_records",
+        "description": "Get delay records for a specific national rail schedule and date.",
+        "parameters": {
+            "schedule_id": {"type": "string", "description": "e.g. NR_SCH01"},
+            "travel_date": {"type": "string", "description": "YYYY-MM-DD"},
+        },
+        "required": ["schedule_id", "travel_date"],
+    },
+    {
+        "name": "get_season_tickets",
+        "description": "Get all season tickets purchased by the logged-in user. Requires login.",
+        "parameters": {},
+        "required": [],
+    },
+    {
+        "name": "get_loyalty_points",
+        "description": "Get the loyalty points balance of the logged-in user. Requires login.",
+        "parameters": {},
+        "required": [],
+    },
+    {
+        "name": "get_disruptions",
+        "description": "Get all active planned disruptions, engineering works, or emergencies.",
+        "parameters": {},
+        "required": [],
+    },
 ]
 
 TOOLS_SCHEMA = """\
@@ -286,7 +317,11 @@ cancel_booking(booking_id)
 get_user_bookings()
 search_policy(query)
 find_alternative_routes(origin_id, destination_id, avoid_station_id, network?)
-get_delay_ripple(station_id, hops?)"""
+get_delay_ripple(station_id, hops?)
+get_delay_records(schedule_id, travel_date)
+get_season_tickets()
+get_loyalty_points()
+get_disruptions()"""
 
 
 # ── Agent logic ───────────────────────────────────────────────────────────────
@@ -440,6 +475,22 @@ def _execute_tool(
                 delayed_station_id=params["station_id"],
                 hops=params.get("hops", 2),
             )
+
+        elif tool_name == "get_delay_records":
+            result = query_delay_records(**params)
+
+        elif tool_name == "get_season_tickets":
+            if not current_user_email:
+                return json.dumps({"error": "You must be logged in to view season tickets."})
+            result = query_season_tickets(current_user_email)
+
+        elif tool_name == "get_loyalty_points":
+            if not current_user_email:
+                return json.dumps({"error": "You must be logged in to view loyalty points."})
+            result = {"loyalty_points": query_loyalty_points(current_user_email)}
+
+        elif tool_name == "get_disruptions":
+            result = query_disruptions()
 
         else:
             result = {"error": f"Unknown tool: {tool_name}"}

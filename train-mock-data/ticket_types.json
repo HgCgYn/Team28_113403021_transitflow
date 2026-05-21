@@ -73,5 +73,15 @@
       "refund_rule": "RF004",
       "notes": "A day pass offers better value than individual single tickets for passengers making 3 or more metro trips in a day. Tap in and out normally at each station."
     }
+  },
+  {
+    "ticket_type": "season",
+    "display_name": "Season Ticket",
+    "available_on": ["metro", "national_rail", "all"],
+    "description": "Unlimited travel for a specified duration (weekly, monthly, annual) on selected networks.",
+    "pricing_model": "fixed_duration",
+    "refundable": false,
+    "changes_allowed": false,
+    "notes": "Season tickets are tied to the user account and are strictly non-transferable."
   }
 ]

@@ -56,7 +56,19 @@
       "Items emitting strong odours that may cause discomfort to other passengers"
     ],
     "smoking_and_vaping": "Strictly prohibited on all metro carriages, platforms, and station concourses.",
-    "noise": "Passengers are asked to keep noise to a considerate level. Use of personal audio devices with external speakers is not permitted."
+    "noise": "Passengers are asked to keep noise to a considerate level. Use of personal audio devices with external speakers is not permitted.",
+    "lost_property": {
+      "procedure": "Items found on metro services should be handed to station staff. Lost items are kept at the terminus station for 7 days before being transferred to the central lost property office.",
+      "claim_fee_usd": 5.00
+    },
+    "accessibility": {
+      "wheelchair_access": "All metro stations have step-free access via lifts from street level to platform. Boarding ramps are not required for metro trains as they are level with the platform.",
+      "priority_boarding": "Not applicable on metro services."
+    },
+    "engineering_works": {
+      "planned_disruptions": "Notices for planned engineering works will be posted at stations and in the app at least 7 days in advance. Replacement bus services are typically provided.",
+      "ticket_acceptance": "Metro tickets are accepted on replacement bus services during engineering works."
+    }
   },
   "national_rail": {
     "bicycles": {
@@ -132,6 +144,14 @@
       "Items emitting strong odours that may cause discomfort to other passengers"
     ],
     "smoking_and_vaping": "Strictly prohibited on all train carriages and at all station platforms.",
-    "conduct": "Passengers behaving in a manner that causes distress or danger to other passengers or staff may be removed from the train. In serious cases, the operator reserves the right to involve law enforcement."
+    "conduct": "Passengers behaving in a manner that causes distress or danger to other passengers or staff may be removed from the train. In serious cases, the operator reserves the right to involve law enforcement.",
+    "lost_property": {
+      "procedure": "Items found on trains are handed to the destination station's staff. Unclaimed items are logged into the national database. Passengers must file a lost property report online.",
+      "claim_fee_usd": 15.00
+    },
+    "engineering_works": {
+      "planned_disruptions": "Major engineering works are typically scheduled for weekends. Schedules will be updated 6 weeks in advance.",
+      "ticket_acceptance": "Tickets booked for affected services can be used on replacement buses or alternative routes without extra charge."
+    }
   }
 }

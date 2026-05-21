@@ -808,13 +808,85 @@ def update_password(email: str, new_password: str) -> bool:
         with _connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, (pw_hash, email))
-                return cur.rowcount > 0
+                conn.commit()
+                return True
     except psycopg2.Error as e:
+        conn.rollback()
         logger.error(f"DB Error in update_password: {e}")
         return False
     except Exception as e:
         logger.error(f"Error in update_password: {e}")
         return False
+
+
+# ── EXTENSION QUERIES ─────────────────────────────────────────────────────────
+
+def query_delay_records(schedule_id: str, travel_date: str) -> list[dict]:
+    """Return delay records for a specific schedule and date."""
+    sql = """
+        SELECT delay_id, schedule_id, travel_date::text, delay_min, reason, reported_at::text
+        FROM delay_records
+        WHERE schedule_id = %s AND travel_date = %s::date
+    """
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (schedule_id, travel_date))
+                return [dict(row) for row in cur.fetchall()]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_delay_records: {e}")
+        return []
+
+def query_season_tickets(user_email: str) -> list[dict]:
+    """Return season tickets for a user."""
+    sql = """
+        SELECT st.season_ticket_id, st.ticket_type, st.valid_from::text, st.valid_until::text, st.price_usd, st.network, st.status, st.purchased_at::text
+        FROM season_tickets st
+        JOIN users u ON st.user_id = u.user_id
+        WHERE u.email = %s
+    """
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (user_email,))
+                rows = cur.fetchall()
+                for row in rows:
+                    row['price_usd'] = float(row['price_usd'])
+                return [dict(row) for row in rows]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_season_tickets: {e}")
+        return []
+
+def query_loyalty_points(user_email: str) -> int:
+    """Return loyalty points for a user."""
+    sql = "SELECT loyalty_points FROM users WHERE email = %s"
+    try:
+        with _connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (user_email,))
+                row = cur.fetchone()
+                if row:
+                    return row[0]
+                return 0
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_loyalty_points: {e}")
+        return 0
+
+def query_disruptions() -> list[dict]:
+    """Return all active disruptions."""
+    sql = """
+        SELECT disruption_id, disruption_type, affected_lines, start_datetime::text, end_datetime::text, description, replacement_service, created_at::text
+        FROM disruptions
+        ORDER BY start_datetime DESC
+    """
+    try:
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql)
+                return [dict(row) for row in cur.fetchall()]
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_disruptions: {e}")
+        return []
 
 
 # ── VECTOR / RAG QUERIES — do not modify ─────────────────────────────────────

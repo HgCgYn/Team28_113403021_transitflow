@@ -110,6 +110,12 @@
     "fraud": "Use of another person's ticket, presentation of a counterfeit ticket, or deliberate fare evasion may result in a penalty fare, removal from the service, and/or legal action.",
     "lost_tickets": "Digital tickets can be retrieved via the app at any time using the booking reference. Passengers are advised to screenshot their QR code before travel in case of connectivity issues.",
     "customer_service": "Passengers with queries or complaints may contact customer service via the in-app chat, email, or station help desks. Response time is within 2 business days.",
-    "dispute_resolution": "If a passenger disagrees with a refund decision, they may escalate the case to the customer service team within 14 days of the original decision."
+    "dispute_resolution": "If a passenger disagrees with a refund decision, they may escalate the case to the customer service team within 14 days of the original decision.",
+    "penalty_fares": {
+      "amount_usd": 80.00,
+      "conditions": "A penalty fare will be issued if a passenger is found travelling without a valid ticket, travelling in a higher class without paying the difference, or unable to present a required discount card.",
+      "payment_deadline_days": 21,
+      "appeal_process": "Appeals must be submitted in writing within 21 days. Penalty fares increase to $150.00 if unpaid after the deadline."
+    }
   }
 }

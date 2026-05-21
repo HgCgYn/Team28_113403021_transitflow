@@ -394,6 +394,66 @@ def seed_feedback(cur):
     print(f"Inserted {len(rows)} feedback")
 
 
+def seed_delay_records(cur):
+    data = load("delay_records.json")
+    rows = []
+    for item in data:
+        rows.append((
+            item["delay_id"],
+            item["schedule_id"],
+            item["travel_date"],
+            item["delay_min"],
+            item.get("reason"),
+            item["reported_at"]
+        ))
+    insert_many(cur, "delay_records",
+                ["delay_id", "schedule_id", "travel_date", "delay_min", "reason", "reported_at"],
+                rows)
+    print(f"Inserted {len(rows)} delay_records")
+
+
+def seed_season_tickets(cur):
+    data = load("season_tickets.json")
+    rows = []
+    for item in data:
+        user_uuid = get_user_uuid(item["user_id"])
+        rows.append((
+            item["season_ticket_id"],
+            user_uuid,
+            item["ticket_type"],
+            item["valid_from"],
+            item["valid_until"],
+            item["price_usd"],
+            item["network"],
+            item["status"],
+            item["purchased_at"]
+        ))
+    insert_many(cur, "season_tickets",
+                ["season_ticket_id", "user_id", "ticket_type", "valid_from", "valid_until", "price_usd", "network", "status", "purchased_at"],
+                rows)
+    print(f"Inserted {len(rows)} season_tickets")
+
+
+def seed_disruptions(cur):
+    data = load("disruptions.json")
+    rows = []
+    for item in data:
+        rows.append((
+            item["disruption_id"],
+            item["disruption_type"],
+            item["affected_lines"],
+            item["start_datetime"],
+            item.get("end_datetime"),
+            item["description"],
+            item.get("replacement_service"),
+            item["created_at"]
+        ))
+    insert_many(cur, "disruptions",
+                ["disruption_id", "disruption_type", "affected_lines", "start_datetime", "end_datetime", "description", "replacement_service", "created_at"],
+                rows)
+    print(f"Inserted {len(rows)} disruptions")
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -417,6 +477,9 @@ def main():
         seed_metro_travels(cur)
         seed_payments(cur)
         seed_feedback(cur)
+        seed_delay_records(cur)
+        seed_season_tickets(cur)
+        seed_disruptions(cur)
         conn.commit()
         print("\nAll done. Database seeded successfully.")
     except Exception as e:
