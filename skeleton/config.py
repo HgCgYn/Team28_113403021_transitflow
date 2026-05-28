@@ -43,3 +43,9 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "transitflow")
 # ── RAG settings ──────────────────────────────────────────────────────────────
 VECTOR_TOP_K           = int(os.getenv("VECTOR_TOP_K", "3"))       # How many policy chunks to retrieve
 VECTOR_SIMILARITY_THRESHOLD = float(os.getenv("VECTOR_SIMILARITY_THRESHOLD", "0.5"))
+
+# ── Estimated Fare Settings (for Graph DB fallback) ─────────────
+ESTIMATED_FARE_BASE_STANDARD = float(os.getenv("ESTIMATED_FARE_BASE_STANDARD", "2.0"))
+ESTIMATED_FARE_RATE_STANDARD = float(os.getenv("ESTIMATED_FARE_RATE_STANDARD", "0.5"))
+ESTIMATED_FARE_BASE_FIRST = float(os.getenv("ESTIMATED_FARE_BASE_FIRST", "5.0"))
+ESTIMATED_FARE_RATE_FIRST = float(os.getenv("ESTIMATED_FARE_RATE_FIRST", "1.5"))

@@ -28,7 +28,11 @@ from typing import Optional
 from neo4j import GraphDatabase
 from neo4j.exceptions import Neo4jError
 
-from skeleton.config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+from skeleton.config import (
+    NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD,
+    ESTIMATED_FARE_BASE_STANDARD, ESTIMATED_FARE_RATE_STANDARD,
+    ESTIMATED_FARE_BASE_FIRST, ESTIMATED_FARE_RATE_FIRST
+)
 
 logger = logging.getLogger("graph_queries")
 if not logger.handlers:
@@ -169,8 +173,8 @@ def query_cheapest_route(
                 stops = record["stops"]
                 
                 # Estimated cost formula: base fare + (stops * rate per stop)
-                base = 5.0 if fare_class == "first" else 2.0
-                rate = 1.5 if fare_class == "first" else 0.5
+                base = ESTIMATED_FARE_BASE_FIRST if fare_class == "first" else ESTIMATED_FARE_BASE_STANDARD
+                rate = ESTIMATED_FARE_RATE_FIRST if fare_class == "first" else ESTIMATED_FARE_RATE_STANDARD
                 estimated_cost = base + (stops * rate)
 
                 stations = [{"station_id": n["station_id"], "name": n["name"]} for n in path.nodes]

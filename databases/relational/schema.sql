@@ -54,6 +54,7 @@ CREATE TYPE payment_status_enum       AS ENUM ('paid', 'refunded', 'pending');
 CREATE TYPE booking_type_enum         AS ENUM ('rail', 'metro');
 CREATE TYPE day_of_week_enum          AS ENUM ('mon','tue','wed','thu','fri','sat','sun');
 CREATE TYPE season_ticket_type_enum   AS ENUM ('weekly', 'monthly', 'annual');
+CREATE TYPE season_ticket_status_enum AS ENUM ('active', 'expired', 'cancelled');
 CREATE TYPE disruption_type_enum      AS ENUM ('engineering', 'emergency', 'weather', 'other');
 
 
@@ -340,7 +341,7 @@ CREATE TABLE IF NOT EXISTS season_tickets (
     valid_until       DATE NOT NULL,
     price_usd         NUMERIC(10,2) NOT NULL,
     network           VARCHAR(10) NOT NULL CHECK (network IN ('metro', 'rail', 'all')),
-    status            VARCHAR(20) NOT NULL DEFAULT 'active',
+    status            season_ticket_status_enum NOT NULL DEFAULT 'active',
     purchased_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
