@@ -27,6 +27,15 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
 -- ============================================================
+--  DELETE STRATEGY (Hard vs Soft Delete)
+--  We employ a mixed but consistent strategy:
+--  - Reference Data (Stations, Schedules, Layouts): We use Hard Deletes (ON DELETE CASCADE)
+--    so that removing a schedule automatically cleans up its stops, fares, and layouts.
+--  - Transactional Data (Bookings, Travels, Payments): We use ON DELETE RESTRICT
+--    to prevent accidental deletion of audited financial and travel records if a user or schedule is deleted.
+-- ============================================================
+
+-- ============================================================
 --  ENUM TYPE DEFINITIONS
 --  Using ENUM enforces the value contract at the DB engine
 --  level, making invalid states unrepresentable — a key
@@ -69,12 +78,12 @@ CREATE TABLE IF NOT EXISTS national_rail_stations (
     name                         VARCHAR(100) NOT NULL,
     is_interchange_national_rail BOOLEAN      NOT NULL DEFAULT FALSE,
     is_interchange_metro         BOOLEAN      NOT NULL DEFAULT FALSE,
-    interchange_metro_station_id VARCHAR(10)  REFERENCES metro_stations(station_id)
+    interchange_metro_station_id VARCHAR(10)  REFERENCES metro_stations(station_id) ON DELETE SET NULL
         DEFERRABLE INITIALLY DEFERRED
 );
 
 ALTER TABLE metro_stations ADD CONSTRAINT fk_metro_national_rail
-FOREIGN KEY (interchange_national_rail_station_id) REFERENCES national_rail_stations(station_id) DEFERRABLE INITIALLY DEFERRED;
+FOREIGN KEY (interchange_national_rail_station_id) REFERENCES national_rail_stations(station_id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED;
 
 -- lines[] on each station → fully normalised junction table
 -- PK = (station_id, line) — a station may serve multiple lines
@@ -111,7 +120,7 @@ CREATE TABLE IF NOT EXISTS metro_schedules (
 -- Normalised stop-level detail for each metro schedule
 CREATE TABLE IF NOT EXISTS metro_schedule_stops (
     schedule_id              VARCHAR(20)  NOT NULL REFERENCES metro_schedules(schedule_id) ON DELETE CASCADE,
-    station_id               VARCHAR(10)  NOT NULL REFERENCES metro_stations(station_id),
+    station_id               VARCHAR(10)  NOT NULL REFERENCES metro_stations(station_id) ON DELETE RESTRICT,
     stop_order               SMALLINT     NOT NULL CHECK (stop_order >= 1),
     travel_time_from_origin_min SMALLINT  NOT NULL CHECK (travel_time_from_origin_min >= 0),
     PRIMARY KEY (schedule_id, station_id)
@@ -143,7 +152,7 @@ CREATE TABLE IF NOT EXISTS national_rail_schedules (
 
 CREATE TABLE IF NOT EXISTS national_rail_schedule_stops (
     schedule_id                  VARCHAR(20)  NOT NULL REFERENCES national_rail_schedules(schedule_id) ON DELETE CASCADE,
-    station_id                   VARCHAR(10)  NOT NULL REFERENCES national_rail_stations(station_id),
+    station_id                   VARCHAR(10)  NOT NULL REFERENCES national_rail_stations(station_id) ON DELETE RESTRICT,
     stop_order                   SMALLINT     NOT NULL CHECK (stop_order >= 1),
     travel_time_from_origin_min  SMALLINT     NOT NULL CHECK (travel_time_from_origin_min >= 0),
     PRIMARY KEY (schedule_id, station_id)
@@ -214,6 +223,8 @@ CREATE TABLE IF NOT EXISTS seats (
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS users (
+    -- PK Design Decision: We use UUID v4 instead of SERIAL for security and scalability.
+    -- UUIDs prevent enumeration attacks (guessing other users' IDs) and allow distributed ID generation.
     user_id       UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     -- legacy_id maps the original mock-data ID (RU01…RU20) to the
     -- UUID during seeding. Kept for audit traceability and team sync.
@@ -250,10 +261,10 @@ CREATE TABLE IF NOT EXISTS user_credentials (
 
 CREATE TABLE IF NOT EXISTS national_rail_bookings (
     booking_id              VARCHAR(20)          PRIMARY KEY,
-    user_id                 UUID                 NOT NULL REFERENCES users(user_id),
-    schedule_id             VARCHAR(20)          NOT NULL REFERENCES national_rail_schedules(schedule_id),
-    origin_station_id       VARCHAR(10)          NOT NULL REFERENCES national_rail_stations(station_id),
-    destination_station_id  VARCHAR(10)          NOT NULL REFERENCES national_rail_stations(station_id),
+    user_id                 UUID                 NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    schedule_id             VARCHAR(20)          NOT NULL REFERENCES national_rail_schedules(schedule_id) ON DELETE RESTRICT,
+    origin_station_id       VARCHAR(10)          NOT NULL REFERENCES national_rail_stations(station_id) ON DELETE RESTRICT,
+    destination_station_id  VARCHAR(10)          NOT NULL REFERENCES national_rail_stations(station_id) ON DELETE RESTRICT,
     travel_date             DATE                 NOT NULL,
     departure_time          TIME                 NOT NULL,
     ticket_type             ticket_type_enum     NOT NULL DEFAULT 'single',
@@ -269,15 +280,15 @@ CREATE TABLE IF NOT EXISTS national_rail_bookings (
 
 CREATE TABLE IF NOT EXISTS metro_travels (
     trip_id                 VARCHAR(20)           PRIMARY KEY,
-    user_id                 UUID                  NOT NULL REFERENCES users(user_id),
-    schedule_id             VARCHAR(20)           NOT NULL REFERENCES metro_schedules(schedule_id),
-    origin_station_id       VARCHAR(10)           NOT NULL REFERENCES metro_stations(station_id),
-    destination_station_id  VARCHAR(10)           NOT NULL REFERENCES metro_stations(station_id),
+    user_id                 UUID                  NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    schedule_id             VARCHAR(20)           NOT NULL REFERENCES metro_schedules(schedule_id) ON DELETE RESTRICT,
+    origin_station_id       VARCHAR(10)           NOT NULL REFERENCES metro_stations(station_id) ON DELETE RESTRICT,
+    destination_station_id  VARCHAR(10)           NOT NULL REFERENCES metro_stations(station_id) ON DELETE RESTRICT,
     travel_date             DATE                  NOT NULL,
     ticket_type             metro_ticket_type_enum NOT NULL,
     -- day_pass_ref points back to the originating day-pass trip_id
     -- (nullable; NULL means this trip is itself the day-pass purchase)
-    day_pass_ref            VARCHAR(20)           REFERENCES metro_travels(trip_id),
+    day_pass_ref            VARCHAR(20)           REFERENCES metro_travels(trip_id) ON DELETE RESTRICT,
     stops_travelled         SMALLINT              CHECK (stops_travelled >= 0),
     amount_usd              NUMERIC(10,2)         NOT NULL CHECK (amount_usd >= 0),
     status                  metro_trip_status_enum NOT NULL DEFAULT 'completed',
@@ -304,7 +315,7 @@ CREATE TABLE IF NOT EXISTS feedback (
     feedback_id   VARCHAR(20)       PRIMARY KEY,
     booking_ref   VARCHAR(20)       NOT NULL,
     booking_type  booking_type_enum NOT NULL,
-    user_id       UUID              NOT NULL REFERENCES users(user_id),
+    user_id       UUID              NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     -- Ratings are always 1–5 (inclusive) per the source data contract
     rating        SMALLINT          NOT NULL CHECK (rating BETWEEN 1 AND 5),
     comment       TEXT,
@@ -314,7 +325,7 @@ CREATE TABLE IF NOT EXISTS feedback (
 
 CREATE TABLE IF NOT EXISTS delay_records (
     delay_id     VARCHAR(20) PRIMARY KEY,
-    schedule_id  VARCHAR(20) NOT NULL REFERENCES national_rail_schedules(schedule_id),
+    schedule_id  VARCHAR(20) NOT NULL REFERENCES national_rail_schedules(schedule_id) ON DELETE CASCADE,
     travel_date  DATE NOT NULL,
     delay_min    SMALLINT NOT NULL CHECK (delay_min > 0),
     reason       TEXT,
@@ -323,7 +334,7 @@ CREATE TABLE IF NOT EXISTS delay_records (
 
 CREATE TABLE IF NOT EXISTS season_tickets (
     season_ticket_id  VARCHAR(20) PRIMARY KEY,
-    user_id           UUID NOT NULL REFERENCES users(user_id),
+    user_id           UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     ticket_type       season_ticket_type_enum NOT NULL,
     valid_from        DATE NOT NULL,
     valid_until       DATE NOT NULL,

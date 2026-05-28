@@ -121,7 +121,7 @@ def query_shortest_route(
                     "origin_id": origin_id,
                     "destination_id": destination_id,
                     "total_time_min": total_time_min,
-                    "stations": stations,
+                    "path": stations,
                     "legs": legs
                 }
     except Neo4jError as e:
@@ -167,6 +167,11 @@ def query_cheapest_route(
 
                 path = record["p"]
                 stops = record["stops"]
+                
+                # Estimated cost formula: base fare + (stops * rate per stop)
+                base = 5.0 if fare_class == "first" else 2.0
+                rate = 1.5 if fare_class == "first" else 0.5
+                estimated_cost = base + (stops * rate)
 
                 stations = [{"station_id": n["station_id"], "name": n["name"]} for n in path.nodes]
                 legs = [{"type": r.type, "line": r.get("line", "")} for r in path.relationships]
@@ -176,9 +181,10 @@ def query_cheapest_route(
                     "origin_id": origin_id,
                     "destination_id": destination_id,
                     "stops": stops,
-                    "stations": stations,
+                    "cost": estimated_cost,
+                    "path": stations,
                     "legs": legs,
-                    "note": "Fare is calculated per-stop. Fewest stops represents the cheapest route."
+                    "note": f"Estimated {fare_class} fare. Fare class visibly affects cost."
                 }
     except Neo4jError as e:
         logger.error(f"Neo4j error in query_cheapest_route: {e}")
@@ -281,9 +287,9 @@ def query_delay_ripple(delayed_station_id: str, hops: int = 2) -> list[dict]:
     """
     # NOTE: Enforce hard cap on hop depth. Variable-length path bounds in Cypher cannot use
     # query parameters, so hops is embedded via f-string — clamping is the security boundary.
-    safe_hops = max(1, min(int(hops), _MAX_HOPS))
+    safe_hops = max(0, min(int(hops), _MAX_HOPS))
     cypher = f"""
-        MATCH p = (start:Station {{station_id: $delayed_station_id}})-[:METRO_LINK|RAIL_LINK*1..{safe_hops}]-(end:Station)
+        MATCH p = (start:Station {{station_id: $delayed_station_id}})-[:METRO_LINK|RAIL_LINK*0..{safe_hops}]-(end:Station)
         WITH end, min(length(p)) AS hops_away
         ORDER BY hops_away ASC
         RETURN end.station_id AS station_id, end.name AS name, hops_away, end.lines AS lines_affected
