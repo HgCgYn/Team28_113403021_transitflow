@@ -5,9 +5,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: transitflow_postgres_v2a
     environment:
-      POSTGRES_USER: transitflow
-      POSTGRES_PASSWORD: transitflow
-      POSTGRES_DB: transitflow
+      POSTGRES_USER: ${POSTGRES_USER:-transitflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-transitflow}
+      POSTGRES_DB: ${POSTGRES_DB:-transitflow}
     ports:
       - "5433:5432"
     volumes:
@@ -23,7 +23,7 @@ services:
     image: neo4j:5-community
     container_name: transitflow_neo4j_v2a
     environment:
-      NEO4J_AUTH: neo4j/transitflow
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-transitflow}
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: apoc.*
     ports:
@@ -41,8 +41,8 @@ services:
     image: dpage/pgadmin4
     container_name: transitflow_pgadmin_v2a
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
       - "5051:80"
     depends_on:

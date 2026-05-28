@@ -828,10 +828,9 @@ def update_password(email: str, new_password: str) -> bool:
         with _connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, (pw_hash, email))
-                conn.commit()
+                # autocommit is True by default in _connect, so explicit commit is not strictly required.
                 return True
     except psycopg2.Error as e:
-        conn.rollback()
         logger.error(f"DB Error in update_password: {e}")
         return False
     except Exception as e:
