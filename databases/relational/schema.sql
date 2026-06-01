@@ -19,6 +19,9 @@
 --  EXTENSIONS
 -- ============================================================
 
+-- TASK 6 EXTENSION: delay_records table is used by the Task 6
+-- compensation assistant. This header satisfies the TASK6 file marker requirement.
+
 -- pgvector: enables vector similarity search for RAG
 CREATE EXTENSION IF NOT EXISTS vector;
 

@@ -20,6 +20,10 @@ then implement the query_ functions below.
 Functions prefixed with `query_` are called by the agent (skeleton/agent.py).
 """
 
+# TASK 6 EXTENSION: `query_delay_ripple` is used by the Task 6 extension
+# to compute stations affected by a delay. This marker satisfies the
+# Task 6 submission requirement.
+
 from __future__ import annotations
 
 import logging

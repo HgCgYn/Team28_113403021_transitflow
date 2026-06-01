@@ -4,9 +4,12 @@ TransitFlow — PostgreSQL / Relational Database Layer
 This module handles all queries to PostgreSQL.
 
 TWO ROLES ARE SERVED HERE:
-  1. Relational  → dual-network transit (metro + national rail),
-                   availability, fares, bookings, seat selection
-  2. Vector      → policy document similarity search (pgvector)
+    1. Relational  → dual-network transit (metro + national rail),
+                                     availability, fares, bookings, seat selection
+    2. Vector      → policy document similarity search (pgvector)
+
+# TASK 6 EXTENSION: Implements delay compensation querying and
+# eligibility logic used by the Task 6 extension feature.
 """
 
 from __future__ import annotations
@@ -855,6 +858,79 @@ def query_delay_records(schedule_id: str, travel_date: str) -> list[dict]:
     except psycopg2.Error as e:
         logger.error(f"DB Error in query_delay_records: {e}")
         return []
+
+
+def query_compensation_eligibility(booking_id: str, user_id: str) -> dict:
+    """
+    Determine compensation eligibility for a booking.
+
+    Why: This function centralises the business rules for delay-based
+    compensation so the agent tools and UI can present a consistent
+    eligibility decision. It validates booking ownership, finds the
+    maximum reported delay for the booked schedule on the travel date,
+    and applies the Task 6 refund rules (0% / 50% / 100%).
+
+    Returns a dict with keys:
+      - eligible: bool
+      - delay_min: int (0 if none reported)
+      - refund_pct: float (0.0 | 0.5 | 1.0)
+      - estimated_refund_usd: float
+
+    Notes:
+      - The function does not perform actual refunds; it only computes
+        eligibility and an estimated refund amount for display.
+    """
+    try:
+        # Validate booking ownership and fetch booking details
+        b_sql = """
+            SELECT schedule_id, travel_date::text, amount_usd, status, user_id
+            FROM national_rail_bookings
+            WHERE booking_id = %s
+        """
+        with _connect() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(b_sql, (booking_id,))
+                booking = cur.fetchone()
+                if not booking:
+                    return {"eligible": False, "delay_min": 0, "refund_pct": 0.0, "estimated_refund_usd": 0.0, "note": "Booking not found."}
+                if str(booking.get("user_id")) != str(user_id):
+                    return {"eligible": False, "delay_min": 0, "refund_pct": 0.0, "estimated_refund_usd": 0.0, "note": "Booking does not belong to user."}
+
+                schedule_id = booking["schedule_id"]
+                travel_date = booking["travel_date"]
+                amount = float(booking.get("amount_usd") or 0.0)
+
+                # Find the maximum reported delay for that schedule/date
+                d_sql = """
+                    SELECT MAX(delay_min) FROM delay_records
+                    WHERE schedule_id = %s AND travel_date = %s::date
+                """
+                cur.execute(d_sql, (schedule_id, travel_date))
+                row = cur.fetchone()
+                max_delay = int(row[0]) if row and row[0] is not None else 0
+
+                # Apply refund rules (Task 6 assumed policy):
+                # 30-59 minutes => 50% ; 60+ => 100%
+                refund_pct = 0.0
+                if max_delay >= 60:
+                    refund_pct = 1.0
+                elif 30 <= max_delay <= 59:
+                    refund_pct = 0.5
+
+                est_refund = round(amount * refund_pct, 2)
+
+                return {
+                    "eligible": refund_pct > 0.0,
+                    "delay_min": max_delay,
+                    "refund_pct": refund_pct,
+                    "estimated_refund_usd": est_refund,
+                }
+    except psycopg2.Error as e:
+        logger.error(f"DB Error in query_compensation_eligibility: {e}")
+        return {"eligible": False, "delay_min": 0, "refund_pct": 0.0, "estimated_refund_usd": 0.0, "note": "DB error."}
+    except Exception as e:
+        logger.error(f"Error in query_compensation_eligibility: {e}")
+        return {"eligible": False, "delay_min": 0, "refund_pct": 0.0, "estimated_refund_usd": 0.0, "note": "Internal error."}
 
 def query_season_tickets(user_email: str) -> list[dict]:
     """Return season tickets for a user."""

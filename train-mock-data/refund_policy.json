@@ -181,4 +181,47 @@
     "cancellation_windows": [],
     "notes": "Passengers travelling to collect lost property are not entitled to free travel or refunds for that journey."
   }
+  ,
+  {
+    "policy_id": "RF010",
+    "label": "Delay Compensation — 30–59 Minutes",
+    "applies_to": { "network_type": "national_rail", "ticket_types": ["single", "return", "day_pass"] },
+    "compensation_rules": [
+      {
+        "rule_id": "RF010_R1",
+        "condition": "Train delayed 30–59 minutes due to operator fault",
+        "compensation": "50% refund of the fare for the delayed leg",
+        "how_to_claim": "Submit claim via app or customer service within 28 days of travel date"
+      }
+    ],
+    "notes": "50% refund for 30–59 minute delays."
+  },
+  {
+    "policy_id": "RF011",
+    "label": "Delay Compensation — 60+ Minutes",
+    "applies_to": { "network_type": "national_rail", "ticket_types": ["single", "return", "day_pass"] },
+    "compensation_rules": [
+      {
+        "rule_id": "RF011_R1",
+        "condition": "Train delayed 60 minutes or more due to operator fault",
+        "compensation": "100% refund of the fare for the delayed leg",
+        "how_to_claim": "Submit claim via app or customer service within 28 days of travel date"
+      }
+    ],
+    "notes": "100% refund for delays of 60 minutes or more."
+  },
+  {
+    "policy_id": "RF012",
+    "label": "Delay Compensation — Alternative Transport",
+    "applies_to": { "network_type": "national_rail", "ticket_types": ["single", "return", "day_pass"] },
+    "compensation_rules": [
+      {
+        "rule_id": "RF012_R1",
+        "condition": "Train delayed 120 minutes or more due to operator fault",
+        "compensation": "Full fare refund plus reimbursement of alternative transport costs up to $10.00 with receipts",
+        "how_to_claim": "Submit claim with receipts via customer service within 28 days of travel date"
+      }
+    ],
+    "notes": "Full refund plus limited alternative transport reimbursement for very long delays."
+  }
 ]

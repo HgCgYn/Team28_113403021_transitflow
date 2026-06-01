@@ -27,6 +27,8 @@ Your goal is to make the database queries richer by:
 The agent will automatically use whatever you put in the databases.
 """
 
+# TASK 6 EXTENSION: Registers new tools to check delays and compensation eligibility.
+
 from __future__ import annotations
 
 import json
@@ -48,6 +50,7 @@ from databases.relational.queries import (
     execute_cancellation,
     query_policy_vector_search,
     query_delay_records,
+    query_compensation_eligibility,
     query_season_tickets,
     query_loyalty_points,
     query_disruptions,
@@ -286,6 +289,23 @@ TOOLS = [
         "required": ["schedule_id", "travel_date"],
     },
     {
+        "name": "check_delay",
+        "description": "Check delay records for a given schedule and date (helper for delay ripple analysis).",
+        "parameters": {
+            "schedule_id": {"type": "string", "description": "e.g. NR_SCH01"},
+            "travel_date": {"type": "string", "description": "YYYY-MM-DD"},
+        },
+        "required": ["schedule_id", "travel_date"],
+    },
+    {
+        "name": "check_compensation",
+        "description": "Check whether a specific booking is eligible for delay compensation. Requires login.",
+        "parameters": {
+            "booking_id": {"type": "string", "description": "Booking reference e.g. BK-A1B2C3"},
+        },
+        "required": ["booking_id"],
+    },
+    {
         "name": "get_season_tickets",
         "description": "Get all season tickets purchased by the logged-in user. Requires login.",
         "parameters": {},
@@ -322,6 +342,9 @@ get_delay_records(schedule_id, travel_date)
 get_season_tickets()
 get_loyalty_points()
 get_disruptions()"""
+
+# TASK 6 EXTENSION: helper tools for delay checks and compensation eligibility
+TOOLS_SCHEMA += "\ncheck_delay(schedule_id, travel_date)\ncheck_compensation(booking_id)"
 
 
 # ── Agent logic ───────────────────────────────────────────────────────────────
@@ -478,6 +501,22 @@ def _execute_tool(
 
         elif tool_name == "get_delay_records":
             result = query_delay_records(**params)
+
+        elif tool_name == "check_delay":
+            # Alias for delay records used by Task 6 UI flows
+            result = query_delay_records(**params)
+
+        elif tool_name == "check_compensation":
+            # Requires login to validate booking ownership
+            if not current_user_email:
+                return json.dumps({"error": "You must be logged in to check compensation eligibility."})
+            profile = query_user_profile(current_user_email)
+            if not profile:
+                return json.dumps({"error": "User profile not found."})
+            booking_id = params.get("booking_id")
+            if not booking_id:
+                return json.dumps({"error": "Missing booking_id parameter."})
+            result = query_compensation_eligibility(booking_id, profile["user_id"])            
 
         elif tool_name == "get_season_tickets":
             if not current_user_email:
