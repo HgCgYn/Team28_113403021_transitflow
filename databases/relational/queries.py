@@ -907,7 +907,11 @@ def query_compensation_eligibility(booking_id: str, user_id: str) -> dict:
                 """
                 cur.execute(d_sql, (schedule_id, travel_date))
                 row = cur.fetchone()
-                max_delay = int(row[0]) if row and row[0] is not None else 0
+                max_delay = 0
+                if row:
+                    max_val = next(iter(row.values()))
+                    if max_val is not None:
+                        max_delay = int(max_val)
 
                 # Apply refund rules (Task 6 assumed policy):
                 # 30-59 minutes => 50% ; 60+ => 100%
