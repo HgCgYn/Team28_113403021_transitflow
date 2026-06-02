@@ -13,6 +13,8 @@
 | scripts/test_compensation_eligibility.py | Test script for compensation | N/A |
 | scripts/test_delay_records.py | Test script for delay records | N/A |
 | scripts/test_vector_search.py | Test script for vector search retrieval | N/A |
+| scripts/test_rag_search_verification.py | RAG search logic test script | N/A |
+| RAG_SEARCH_VERIFICATION.md | Vector search design decisions and verification | N/A |
 
 ## Purpose
 
