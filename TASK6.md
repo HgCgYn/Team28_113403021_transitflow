@@ -2,14 +2,12 @@
 
 ## Files Modified or Added
 
-| File | Changes | Functions / Tables |
-|------|---------|-------------------|
-| databases/relational/queries.py | Added `query_compensation_eligibility`, added header marker | query_compensation_eligibility, query_delay_records |
-| databases/relational/schema.sql | Added `delay_records` schema, added PK explanations and EXTENSION header | delay_records |
+| File | What was modified/added | Specific function/table name |
+|---|---|---|
+| databases/relational/queries.py | Added `query_compensation_eligibility`, added header marker | query_compensation_eligibility |
 | train-mock-data/refund_policy.json | Added 3 delay compensation policies | RF010, RF011, RF012 |
 | skeleton/agent.py | Registered 2 new tools | check_delay, check_compensation |
 | skeleton/seed_vectors.py | Dynamic pgvector dimensions handling and marker | seed |
-| databases/graph/queries.py | Marked `query_delay_ripple` as Task 6 extension | query_delay_ripple |
 | scripts/test_compensation_eligibility.py | Test script for compensation | N/A |
 | scripts/test_delay_records.py | Test script for delay records | N/A |
 | scripts/test_vector_search.py | Test script for vector search retrieval | N/A |
