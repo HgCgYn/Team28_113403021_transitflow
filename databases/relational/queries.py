@@ -221,8 +221,8 @@ def query_available_seats(
     destination_station_id: str = None
 ) -> list[dict]:
     """
-    Return available seats using collision test logic (區間碰撞測試).
-    數學碰撞條件：已售出區間的起點 < 查詢區間的終點 AND 已售出區間的終點 > 查詢區間的起點
+    Return available seats using a geometric collision test logic.
+    Mathematical overlap condition: (Booked start < Query end) AND (Booked end > Query start)
     """
     if not origin_station_id or not destination_station_id:
         logger.warning("query_available_seats called without origin/destination, falling back to full trip block.")
@@ -344,7 +344,8 @@ def query_user_profile(user_email: str) -> Optional[dict]:
 def query_user_bookings(user_email: str) -> dict:
     """
     Return a user's combined booking history (national rail + metro).
-    聚合成樹狀結構：主檔 (狀態、總金額) -> 票券明細
+    Aggregates the raw records into a nested JSON tree structure:
+    Root (status, total amount) -> Ticket Details (children).
     """
     user = query_user_profile(user_email)
     if not user:
@@ -486,7 +487,8 @@ def execute_booking(
 ) -> tuple[bool, dict | str]:
     """
     Create a national rail booking for a logged-in user.
-    高併發防護：使用 SELECT ... FOR UPDATE 悲觀鎖定座位，確保碰撞檢查正確無超賣。
+    Concurrency safeguard: Uses SELECT ... FOR UPDATE pessimistic locking
+    to strictly prevent seat overbooking during high-traffic checkouts.
     """
     try:
         avail_sql = """
@@ -609,7 +611,8 @@ def execute_booking(
 def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | str]:
     """
     Cancel a national rail booking owned by the given user.
-    依據時間差動態計算退款政策 (RF001 / RF002).
+    Dynamically computes refund eligibility and percentage based on
+    time-to-departure intervals (matching RF001 / RF002 policies).
     """
     sql_check = """
         SELECT b.status, b.travel_date, b.departure_time, b.amount_usd, s.service_type
@@ -844,7 +847,14 @@ def update_password(email: str, new_password: str) -> bool:
 # ── EXTENSION QUERIES ─────────────────────────────────────────────────────────
 
 def query_delay_records(schedule_id: str, travel_date: str) -> list[dict]:
-    """Return delay records for a specific schedule and date."""
+    """
+    Return all delay records for a given schedule on a given date.
+    
+    Why: Provides raw delay data necessary for the agent to analyze 
+    ripple effects and for the UI to display disruption histories. 
+    It ensures we fetch all incidents (even multiple per day) for 
+    a specific train.
+    """
     sql = """
         SELECT delay_id, schedule_id, travel_date::text, delay_min, reason, reported_at::text
         FROM delay_records
