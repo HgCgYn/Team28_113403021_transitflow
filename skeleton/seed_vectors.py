@@ -12,6 +12,9 @@ Note: Gemini free tier has ~1500 requests/minute — this script makes ~13 calls
 
 Students: To extend the assistant's knowledge, add entries to the JSON files in
 train-mock-data/ and re-run this script.
+
+# TASK 6 EXTENSION: This script was modified to adapt the vector column type
+# dynamically and to selectively build HNSW indexes based on the model's dimensions.
 """
 
 import json

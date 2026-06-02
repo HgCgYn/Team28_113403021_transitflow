@@ -1,3 +1,4 @@
+# TASK 6 EXTENSION: Test script for verifying compensation eligibility logic
 import os
 import sys
 import uuid
