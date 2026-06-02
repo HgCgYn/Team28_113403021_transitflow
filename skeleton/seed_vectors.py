@@ -23,6 +23,8 @@ sys.path.insert(0, ".")
 
 from skeleton.llm_provider import llm
 from databases.relational.queries import store_policy_document
+import psycopg2
+from skeleton.config import PG_DSN
 
 _DATA_DIR = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "train-mock-data")
@@ -87,6 +89,14 @@ def build_documents():
 def seed():
     documents = build_documents()
     print(f"📄 Embedding {len(documents)} policy documents using {llm.chat_provider}...\n")
+
+    # 在寫入前清空資料表，確保腳本具備冪等性 (Idempotent)
+    print("  Clearing existing policy documents...")
+    with psycopg2.connect(PG_DSN) as conn:
+        with conn.cursor() as cur:
+            # RESTART IDENTITY 會讓 SERIAL id 重新從 1 開始跳號
+            cur.execute("TRUNCATE TABLE policy_documents RESTART IDENTITY;")
+        conn.commit()
 
     for i, doc in enumerate(documents):
         print(f"  [{i+1}/{len(documents)}] Embedding: {doc['title']}")
