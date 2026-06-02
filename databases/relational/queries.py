@@ -541,16 +541,18 @@ def execute_booking(
                             return False, "Invalid seat_id."
                         target_coach = c_res['coach']
                         
-                    # Pessimistic Lock: Secure the specific seat record to prevent concurrent booking clashes
+                    # NOTE: Pessimistic lock requires the 'coach' condition to prevent locking the same seat ID in other coaches.
+                    # Why: Without coach, locking seat_id='1A' would lock ALL coaches' 1A seats, severely reducing concurrency.
                     lock_sql = """
                         SELECT 1 FROM seats s
                         JOIN seat_layouts sl ON s.layout_id = sl.layout_id
-                        WHERE sl.schedule_id = %s AND s.seat_id = %s
+                        WHERE sl.schedule_id = %s AND s.seat_id = %s AND s.coach = %s
                         FOR UPDATE
                     """
-                    cur.execute(lock_sql, (schedule_id, target_seat_id))
+                    cur.execute(lock_sql, (schedule_id, target_seat_id, target_coach))
                     
-                    # Double-check phase: Perform a strict overlap test to guarantee the seat is truly vacant
+                    # NOTE: Double-check overlap MUST include the 'coach' condition to prevent false positives across different coaches.
+                    # Why: Without coach, user B buying coach B seat 1A would be blocked if user A just bought coach A seat 1A.
                     check_overlap_sql = """
                         SELECT 1
                         FROM national_rail_bookings b
@@ -559,11 +561,12 @@ def execute_booking(
                         WHERE b.schedule_id = %s
                           AND b.travel_date = %s::date
                           AND b.seat_id = %s
+                          AND b.coach = %s
                           AND b.status IN ('confirmed', 'completed')
                           AND b_orig.stop_order < %s
                           AND b_dest.stop_order > %s
                     """
-                    cur.execute(check_overlap_sql, (schedule_id, travel_date, target_seat_id, d_order, o_order))
+                    cur.execute(check_overlap_sql, (schedule_id, travel_date, target_seat_id, target_coach, d_order, o_order))
                     if cur.fetchone():
                         conn.rollback()
                         return False, "Seat was just taken by another user during checkout."
