@@ -94,21 +94,21 @@ def seed():
     documents = build_documents()
     print(f"📄 Embedding {len(documents)} policy documents using {llm.chat_provider}...\n")
 
-    # Ensure script idempotency: clear existing policy documents and adapt embedding schema before ingestion
+    # Ensure script idempotency: clear existing policy documents and dynamically adapt embedding schema
     print("  Clearing existing policy documents and adapting embedding schema...")
     with psycopg2.connect(PG_DSN) as conn:
         with conn.cursor() as cur:
+            # Step 1: Must truncate first—if old data exists and we alter the type, direct type conversion fails
             # RESTART IDENTITY resets the SERIAL id counter back to 1 for fresh sequence numbering
             cur.execute("TRUNCATE TABLE policy_documents RESTART IDENTITY;")
             
-            # HNSW index must be dropped before altering the column type
+            # Step 2: Dynamically adjust column dimension (prevents crash when switching to Gemini 3072-dim vectors)
+            # Drop index before altering column type
             cur.execute("DROP INDEX IF EXISTS idx_policy_documents_embedding;")
-            
-            # Dynamically adapt vector dimension based on active LLM provider (e.g., OpenAI=1536, Gemini=768)
             cur.execute(f"ALTER TABLE policy_documents ALTER COLUMN embedding TYPE vector({llm.embed_dim});")
             
-            # pgvector's HNSW index supports up to 2000 dimensions
-            # If model exceeds this (e.g., Llama3 4096-dim), skip index to fall back to IVFFlat or exact search
+            # Step 3: Rebuild HNSW index (Note: pgvector's HNSW index supports max 2000 dimensions)
+            # If embedding dimension exceeds 2000, skip HNSW and rely on exact search or IVFFlat
             if llm.embed_dim <= 2000:
                 cur.execute(
                     "CREATE INDEX IF NOT EXISTS idx_policy_documents_embedding ON policy_documents USING hnsw (embedding vector_cosine_ops);"
