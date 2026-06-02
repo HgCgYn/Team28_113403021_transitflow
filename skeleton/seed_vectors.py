@@ -19,8 +19,11 @@ import os
 import sys
 import time
 
+import psycopg2
+
 sys.path.insert(0, ".")
 
+from skeleton.config import PG_DSN
 from skeleton.llm_provider import llm
 from databases.relational.queries import store_policy_document
 import psycopg2
@@ -90,12 +93,16 @@ def seed():
     documents = build_documents()
     print(f"📄 Embedding {len(documents)} policy documents using {llm.chat_provider}...\n")
 
-    # Clear existing policy documents to ensure script idempotency on multiple runs
-    print("  Clearing existing policy documents...")
+    print("  Clearing existing policy documents and adapting embedding schema...")
     with psycopg2.connect(PG_DSN) as conn:
         with conn.cursor() as cur:
-            # RESTART IDENTITY cleanly resets the SERIAL id back to 1 for consistency
             cur.execute("TRUNCATE TABLE policy_documents RESTART IDENTITY;")
+            cur.execute("DROP INDEX IF EXISTS idx_policy_documents_embedding;")
+            cur.execute(f"ALTER TABLE policy_documents ALTER COLUMN embedding TYPE vector({llm.embed_dim});")
+            if llm.embed_dim <= 2000:
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_policy_documents_embedding ON policy_documents USING hnsw (embedding vector_cosine_ops);"
+                )
         conn.commit()
 
     for i, doc in enumerate(documents):
