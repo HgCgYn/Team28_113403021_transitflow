@@ -96,9 +96,17 @@ def seed():
     print("  Clearing existing policy documents and adapting embedding schema...")
     with psycopg2.connect(PG_DSN) as conn:
         with conn.cursor() as cur:
+            # WHY: Ensure script idempotency by resetting the SERIAL id and clearing existing data
             cur.execute("TRUNCATE TABLE policy_documents RESTART IDENTITY;")
+            
+            # WHY: HNSW index must be dropped before altering the column type
             cur.execute("DROP INDEX IF EXISTS idx_policy_documents_embedding;")
+            
+            # WHY: Dynamically adapt the vector dimension based on the active LLM provider (e.g., OpenAI=1536, Gemini=768)
             cur.execute(f"ALTER TABLE policy_documents ALTER COLUMN embedding TYPE vector({llm.embed_dim});")
+            
+            # WHY: pgvector's HNSW index only supports up to 2000 dimensions.
+            # If a model exceeds this (e.g., Llama3 4096-dim), we must fall back to Exact Nearest Neighbor (IVFFlat or no index).
             if llm.embed_dim <= 2000:
                 cur.execute(
                     "CREATE INDEX IF NOT EXISTS idx_policy_documents_embedding ON policy_documents USING hnsw (embedding vector_cosine_ops);"
