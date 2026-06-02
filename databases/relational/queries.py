@@ -1019,8 +1019,9 @@ def query_policy_vector_search(embedding: list[float], top_k: int = VECTOR_TOP_K
     try:
         with _connect() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                # NOTE: Removed WHERE clause to allow PostgreSQL to use the pgvector HNSW index.
-                #       HNSW indexes do not support range filters on distance.
+                # NOTE: Removed WHERE clause to ensure PostgreSQL uses the HNSW index (ANN search).
+                #       pgvector HNSW indexes do not support range filters on distance.
+                #       Threshold filtering is performed in Python application layer instead.
                 cur.execute(sql, (vec_str, vec_str, top_k))
                 results = []
                 for row in cur.fetchall():
