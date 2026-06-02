@@ -321,7 +321,7 @@ def auto_select_adjacent_seats(available_seats: list[dict], count: int) -> list[
 # ── USER & BOOKING QUERIES ────────────────────────────────────────────────────
 
 def query_user_profile(user_email: str) -> Optional[dict]:
-    """Return a user's profile by email."""
+    """Return a user's profile by email with sensitive PII masked."""
     sql = """
         SELECT user_id, legacy_id, first_name, surname, full_name, email, phone, date_of_birth::text, registered_at::text, is_active
         FROM users
@@ -334,6 +334,25 @@ def query_user_profile(user_email: str) -> Optional[dict]:
                 row = cur.fetchone()
                 if row:
                     row["user_id"] = str(row["user_id"])
+                    
+                    # DATA ANONYMIZATION: Mask sensitive PII fields
+                    if row.get("phone"):
+                        phone = str(row["phone"])
+                        # Keep last 4 digits visible, mask the rest
+                        if len(phone) > 4:
+                            row["phone"] = "*" * (len(phone) - 4) + phone[-4:]
+                        else:
+                            row["phone"] = "****"
+                            
+                    if row.get("date_of_birth"):
+                        dob = str(row["date_of_birth"])
+                        # Mask month and day, e.g. 1990-05-15 -> 1990-**-**
+                        parts = dob.split("-")
+                        if len(parts) == 3:
+                            row["date_of_birth"] = f"{parts[0]}-**-**"
+                        else:
+                            row["date_of_birth"] = "****-**-**"
+                            
                     return dict(row)
                 return None
     except psycopg2.Error as e:
