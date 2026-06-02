@@ -340,6 +340,8 @@ CREATE TABLE IF NOT EXISTS delay_records (
     reported_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- WHY: Tracks active season tickets for users, used to apply fare discounts or free travel automatically.
+-- PK Design Decision: VARCHAR(20) is used to align with the ticketing system's alphanumeric reference format.
 CREATE TABLE IF NOT EXISTS season_tickets (
     season_ticket_id  VARCHAR(20) PRIMARY KEY,
     user_id           UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -352,6 +354,8 @@ CREATE TABLE IF NOT EXISTS season_tickets (
     purchased_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- WHY: Stores network-wide disruption events to feed real-time agent notifications and UI alerts.
+-- PK Design Decision: VARCHAR(20) is used to match the legacy external disruption feed IDs.
 CREATE TABLE IF NOT EXISTS disruptions (
     disruption_id   VARCHAR(20) PRIMARY KEY,
     disruption_type disruption_type_enum NOT NULL,

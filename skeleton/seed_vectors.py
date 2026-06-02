@@ -29,8 +29,6 @@ sys.path.insert(0, ".")
 from skeleton.config import PG_DSN
 from skeleton.llm_provider import llm
 from databases.relational.queries import store_policy_document
-import psycopg2
-from skeleton.config import PG_DSN
 
 _DATA_DIR = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "train-mock-data")
