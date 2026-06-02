@@ -282,7 +282,7 @@ def query_available_seats(
                 AND b.seat_id = s.seat_id
                 AND b.coach = s.coach
                 AND b.status IN ('confirmed', 'completed')
-                -- 碰撞條件：已售出區間的起點 < 查詢區間的終點 AND 已售出區間的終點 > 查詢區間的起點
+                -- Collision logic: Sold segment start < Search segment end AND Sold segment end > Search segment start
                 AND b_orig.stop_order < sr.search_dest_order
                 AND b_dest.stop_order > sr.search_orig_order
           )
