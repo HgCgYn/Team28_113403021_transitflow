@@ -1,3 +1,4 @@
+# TASK 6 EXTENSION: Test script for verifying delay records querying
 import os
 import sys
 

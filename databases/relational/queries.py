@@ -26,7 +26,7 @@ from argon2.exceptions import VerifyMismatchError
 
 from skeleton.config import PG_DSN, VECTOR_TOP_K, VECTOR_SIMILARITY_THRESHOLD
 
-# 設定標準 logging 模組
+# Configure standard logging module to ensure all errors are properly tracked
 logger = logging.getLogger("relational_queries")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
@@ -221,8 +221,8 @@ def query_available_seats(
     destination_station_id: str = None
 ) -> list[dict]:
     """
-    Return available seats using collision test logic (區間碰撞測試).
-    數學碰撞條件：已售出區間的起點 < 查詢區間的終點 AND 已售出區間的終點 > 查詢區間的起點
+    Return available seats using a geometric collision test logic.
+    Mathematical overlap condition: (Booked start < Query end) AND (Booked end > Query start)
     """
     if not origin_station_id or not destination_station_id:
         logger.warning("query_available_seats called without origin/destination, falling back to full trip block.")
@@ -282,7 +282,7 @@ def query_available_seats(
                 AND b.seat_id = s.seat_id
                 AND b.coach = s.coach
                 AND b.status IN ('confirmed', 'completed')
-                -- 碰撞條件：已售出區間的起點 < 查詢區間的終點 AND 已售出區間的終點 > 查詢區間的起點
+                -- Collision logic: Sold segment start < Search segment end AND Sold segment end > Search segment start
                 AND b_orig.stop_order < sr.search_dest_order
                 AND b_dest.stop_order > sr.search_orig_order
           )
@@ -344,7 +344,8 @@ def query_user_profile(user_email: str) -> Optional[dict]:
 def query_user_bookings(user_email: str) -> dict:
     """
     Return a user's combined booking history (national rail + metro).
-    聚合成樹狀結構：主檔 (狀態、總金額) -> 票券明細
+    Aggregates the raw records into a nested JSON tree structure:
+    Root (status, total amount) -> Ticket Details (children).
     """
     user = query_user_profile(user_email)
     if not user:
@@ -486,7 +487,8 @@ def execute_booking(
 ) -> tuple[bool, dict | str]:
     """
     Create a national rail booking for a logged-in user.
-    高併發防護：使用 SELECT ... FOR UPDATE 悲觀鎖定座位，確保碰撞檢查正確無超賣。
+    Concurrency safeguard: Uses SELECT ... FOR UPDATE pessimistic locking
+    to strictly prevent seat overbooking during high-traffic checkouts.
     """
     try:
         avail_sql = """
@@ -497,7 +499,7 @@ def execute_booking(
         """
         
         with _connect() as conn:
-            # 必須明確關閉 autocommit 以建立 Transaction
+            # We must explicitly disable autocommit to begin a manual transaction block
             conn.autocommit = False
             try:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -539,7 +541,7 @@ def execute_booking(
                             return False, "Invalid seat_id."
                         target_coach = c_res['coach']
                         
-                    # 【悲觀鎖】鎖定目標座位紀錄
+                    # Pessimistic Lock: Secure the specific seat record to prevent concurrent booking clashes
                     lock_sql = """
                         SELECT 1 FROM seats s
                         JOIN seat_layouts sl ON s.layout_id = sl.layout_id
@@ -548,7 +550,7 @@ def execute_booking(
                     """
                     cur.execute(lock_sql, (schedule_id, target_seat_id))
                     
-                    # 【雙重檢查】碰撞測試
+                    # Double-check phase: Perform a strict overlap test to guarantee the seat is truly vacant
                     check_overlap_sql = """
                         SELECT 1
                         FROM national_rail_bookings b
@@ -566,7 +568,7 @@ def execute_booking(
                         conn.rollback()
                         return False, "Seat was just taken by another user during checkout."
                     
-                    # 寫入訂單
+                    # Successfully secured the seat, now persist the booking record
                     booking_id = _gen_booking_id()
                     insert_b_sql = """
                         INSERT INTO national_rail_bookings (
@@ -581,7 +583,7 @@ def execute_booking(
                         stops_travelled, amount_usd
                     ))
                     
-                    # 寫入付款紀錄
+                    # Finally, generate the initial payment record for checkout
                     payment_id = _gen_payment_id()
                     insert_p_sql = """
                         INSERT INTO payments (payment_id, booking_ref, booking_type, amount_usd, method, status)
@@ -609,7 +611,8 @@ def execute_booking(
 def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | str]:
     """
     Cancel a national rail booking owned by the given user.
-    依據時間差動態計算退款政策 (RF001 / RF002).
+    Dynamically computes refund eligibility and percentage based on
+    time-to-departure intervals (matching RF001 / RF002 policies).
     """
     sql_check = """
         SELECT b.status, b.travel_date, b.departure_time, b.amount_usd, s.service_type
@@ -622,7 +625,7 @@ def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | st
             conn.autocommit = False
             try:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                    # FOR UPDATE 鎖定這筆訂單避免 race condition
+                    # Lock this booking row via FOR UPDATE to safely prevent concurrent cancellation race conditions
                     cur.execute(sql_check + " FOR UPDATE OF b", (booking_id, user_id))
                     row = cur.fetchone()
                     if not row:
@@ -638,7 +641,7 @@ def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | st
                     service_type = row['service_type']
                     amount = float(row['amount_usd'])
                     
-                    # 以 UTC 為基準計算時間差
+                    # Calculate the exact time difference relying purely on UTC for consistency
                     dep_dt = datetime.combine(travel_date, departure_time).replace(tzinfo=timezone.utc)
                     now_dt = datetime.now(timezone.utc)
                     
@@ -669,11 +672,11 @@ def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | st
                     if refund_amount < 0:
                         refund_amount = 0.0
                         
-                    # 更新為 cancelled
+                    # Process cancellation: update the booking status to reflect the change
                     upd_sql = "UPDATE national_rail_bookings SET status = 'cancelled' WHERE booking_id = %s"
                     cur.execute(upd_sql, (booking_id,))
                     
-                    # 建立退款明細
+                    # Generate the refund payment record for the passenger
                     if refund_amount > 0:
                         payment_id = _gen_payment_id()
                         ins_pay_sql = """
@@ -844,7 +847,14 @@ def update_password(email: str, new_password: str) -> bool:
 # ── EXTENSION QUERIES ─────────────────────────────────────────────────────────
 
 def query_delay_records(schedule_id: str, travel_date: str) -> list[dict]:
-    """Return delay records for a specific schedule and date."""
+    """
+    Return all delay records for a given schedule on a given date.
+    
+    Why: Provides raw delay data necessary for the agent to analyze 
+    ripple effects and for the UI to display disruption histories. 
+    It ensures we fetch all incidents (even multiple per day) for 
+    a specific train.
+    """
     sql = """
         SELECT delay_id, schedule_id, travel_date::text, delay_min, reason, reported_at::text
         FROM delay_records
@@ -999,7 +1009,6 @@ def query_policy_vector_search(embedding: list[float], top_k: int = VECTOR_TOP_K
             content,
             1 - (embedding <=> %s::vector) AS similarity
         FROM policy_documents
-        WHERE 1 - (embedding <=> %s::vector) > %s
         ORDER BY embedding <=> %s::vector
         LIMIT %s
     """
@@ -1007,8 +1016,14 @@ def query_policy_vector_search(embedding: list[float], top_k: int = VECTOR_TOP_K
     try:
         with _connect() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(sql, (vec_str, vec_str, VECTOR_SIMILARITY_THRESHOLD, vec_str, top_k))
-                return [dict(row) for row in cur.fetchall()]
+                # NOTE: Removed WHERE clause to allow PostgreSQL to use the pgvector HNSW index.
+                #       HNSW indexes do not support range filters on distance.
+                cur.execute(sql, (vec_str, vec_str, top_k))
+                results = []
+                for row in cur.fetchall():
+                    if row["similarity"] > VECTOR_SIMILARITY_THRESHOLD:
+                        results.append(dict(row))
+                return results
     except psycopg2.Error as e:
         logger.error(f"DB Error in query_policy_vector_search: {e}")
         return []

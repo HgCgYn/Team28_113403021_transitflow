@@ -327,6 +327,10 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 
 
+-- WHY: This table exists to store daily disruption reports for the Task 6 delay compensation feature.
+-- It allows the system to cross-reference a user's booking date and schedule with reported delays.
+-- PK Design Decision: We use VARCHAR(20) for delay_id to remain consistent with the legacy system's
+-- alphanumeric ID formats (e.g., 'DR-101') rather than migrating to UUIDs for this isolated feature.
 CREATE TABLE IF NOT EXISTS delay_records (
     delay_id     VARCHAR(20) PRIMARY KEY,
     schedule_id  VARCHAR(20) NOT NULL REFERENCES national_rail_schedules(schedule_id) ON DELETE CASCADE,
@@ -336,6 +340,8 @@ CREATE TABLE IF NOT EXISTS delay_records (
     reported_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- WHY: Tracks active season tickets for users, used to apply fare discounts or free travel automatically.
+-- PK Design Decision: VARCHAR(20) is used to align with the ticketing system's alphanumeric reference format.
 CREATE TABLE IF NOT EXISTS season_tickets (
     season_ticket_id  VARCHAR(20) PRIMARY KEY,
     user_id           UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -348,6 +354,8 @@ CREATE TABLE IF NOT EXISTS season_tickets (
     purchased_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- WHY: Stores network-wide disruption events to feed real-time agent notifications and UI alerts.
+-- PK Design Decision: VARCHAR(20) is used to match the legacy external disruption feed IDs.
 CREATE TABLE IF NOT EXISTS disruptions (
     disruption_id   VARCHAR(20) PRIMARY KEY,
     disruption_type disruption_type_enum NOT NULL,

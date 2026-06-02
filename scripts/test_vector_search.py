@@ -1,3 +1,4 @@
+# TASK 6 EXTENSION: Test script for verifying vector search retrieval
 import json
 import sys
 import os

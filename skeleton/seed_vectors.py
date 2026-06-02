@@ -12,6 +12,9 @@ Note: Gemini free tier has ~1500 requests/minute — this script makes ~13 calls
 
 Students: To extend the assistant's knowledge, add entries to the JSON files in
 train-mock-data/ and re-run this script.
+
+# TASK 6 EXTENSION: This script was modified to adapt the vector column type
+# dynamically and to selectively build HNSW indexes based on the model's dimensions.
 """
 
 import json
@@ -19,12 +22,13 @@ import os
 import sys
 import time
 
+import psycopg2
+
 sys.path.insert(0, ".")
 
+from skeleton.config import PG_DSN
 from skeleton.llm_provider import llm
 from databases.relational.queries import store_policy_document
-import psycopg2
-from skeleton.config import PG_DSN
 
 _DATA_DIR = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "train-mock-data")
@@ -90,12 +94,25 @@ def seed():
     documents = build_documents()
     print(f"📄 Embedding {len(documents)} policy documents using {llm.chat_provider}...\n")
 
-    # Clear the table before writing to ensure the script is idempotent
-    print("  Clearing existing policy documents...")
+    # Ensure script idempotency: clear existing policy documents and adapt embedding schema before ingestion
+    print("  Clearing existing policy documents and adapting embedding schema...")
     with psycopg2.connect(PG_DSN) as conn:
         with conn.cursor() as cur:
-            # RESTART IDENTITY resets the SERIAL id counter back to 1
+            # RESTART IDENTITY resets the SERIAL id counter back to 1 for fresh sequence numbering
             cur.execute("TRUNCATE TABLE policy_documents RESTART IDENTITY;")
+            
+            # HNSW index must be dropped before altering the column type
+            cur.execute("DROP INDEX IF EXISTS idx_policy_documents_embedding;")
+            
+            # Dynamically adapt vector dimension based on active LLM provider (e.g., OpenAI=1536, Gemini=768)
+            cur.execute(f"ALTER TABLE policy_documents ALTER COLUMN embedding TYPE vector({llm.embed_dim});")
+            
+            # pgvector's HNSW index supports up to 2000 dimensions
+            # If model exceeds this (e.g., Llama3 4096-dim), skip index to fall back to IVFFlat or exact search
+            if llm.embed_dim <= 2000:
+                cur.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_policy_documents_embedding ON policy_documents USING hnsw (embedding vector_cosine_ops);"
+                )
         conn.commit()
 
     for i, doc in enumerate(documents):
