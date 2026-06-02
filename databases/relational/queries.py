@@ -534,11 +534,19 @@ def execute_booking(
                         target_seat_id = avail_seats[0]['seat_id']
                         target_coach = avail_seats[0]['coach']
                     else:
-                        coach_sql = "SELECT coach FROM seats WHERE seat_id = %s"
-                        cur.execute(coach_sql, (target_seat_id,))
+                        coach_sql = """
+                            SELECT s.coach 
+                            FROM seats s
+                            JOIN seat_layouts sl ON s.layout_id = sl.layout_id
+                            JOIN coaches c ON s.layout_id = c.layout_id AND s.coach = c.coach
+                            WHERE sl.schedule_id = %s 
+                              AND s.seat_id = %s
+                              AND c.fare_class = %s
+                        """
+                        cur.execute(coach_sql, (schedule_id, target_seat_id, fare_class))
                         c_res = cur.fetchone()
                         if not c_res:
-                            return False, "Invalid seat_id."
+                            return False, "Invalid seat_id or fare class for this schedule."
                         target_coach = c_res['coach']
                         
                     # NOTE: Pessimistic lock requires the 'coach' condition to prevent locking the same seat ID in other coaches.
