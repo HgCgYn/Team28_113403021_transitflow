@@ -90,11 +90,11 @@ def seed():
     documents = build_documents()
     print(f"📄 Embedding {len(documents)} policy documents using {llm.chat_provider}...\n")
 
-    # 在寫入前清空資料表，確保腳本具備冪等性 (Idempotent)
+    # Clear existing policy documents to ensure script idempotency on multiple runs
     print("  Clearing existing policy documents...")
     with psycopg2.connect(PG_DSN) as conn:
         with conn.cursor() as cur:
-            # RESTART IDENTITY 會讓 SERIAL id 重新從 1 開始跳號
+            # RESTART IDENTITY cleanly resets the SERIAL id back to 1 for consistency
             cur.execute("TRUNCATE TABLE policy_documents RESTART IDENTITY;")
         conn.commit()
 

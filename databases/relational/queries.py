@@ -26,7 +26,7 @@ from argon2.exceptions import VerifyMismatchError
 
 from skeleton.config import PG_DSN, VECTOR_TOP_K, VECTOR_SIMILARITY_THRESHOLD
 
-# 設定標準 logging 模組
+# Configure standard logging module to ensure all errors are properly tracked
 logger = logging.getLogger("relational_queries")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
@@ -497,7 +497,7 @@ def execute_booking(
         """
         
         with _connect() as conn:
-            # 必須明確關閉 autocommit 以建立 Transaction
+            # We must explicitly disable autocommit to begin a manual transaction block
             conn.autocommit = False
             try:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
@@ -539,7 +539,7 @@ def execute_booking(
                             return False, "Invalid seat_id."
                         target_coach = c_res['coach']
                         
-                    # 【悲觀鎖】鎖定目標座位紀錄
+                    # Pessimistic Lock: Secure the specific seat record to prevent concurrent booking clashes
                     lock_sql = """
                         SELECT 1 FROM seats s
                         JOIN seat_layouts sl ON s.layout_id = sl.layout_id
@@ -548,7 +548,7 @@ def execute_booking(
                     """
                     cur.execute(lock_sql, (schedule_id, target_seat_id))
                     
-                    # 【雙重檢查】碰撞測試
+                    # Double-check phase: Perform a strict overlap test to guarantee the seat is truly vacant
                     check_overlap_sql = """
                         SELECT 1
                         FROM national_rail_bookings b
@@ -566,7 +566,7 @@ def execute_booking(
                         conn.rollback()
                         return False, "Seat was just taken by another user during checkout."
                     
-                    # 寫入訂單
+                    # Successfully secured the seat, now persist the booking record
                     booking_id = _gen_booking_id()
                     insert_b_sql = """
                         INSERT INTO national_rail_bookings (
@@ -581,7 +581,7 @@ def execute_booking(
                         stops_travelled, amount_usd
                     ))
                     
-                    # 寫入付款紀錄
+                    # Finally, generate the initial payment record for checkout
                     payment_id = _gen_payment_id()
                     insert_p_sql = """
                         INSERT INTO payments (payment_id, booking_ref, booking_type, amount_usd, method, status)
@@ -622,7 +622,7 @@ def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | st
             conn.autocommit = False
             try:
                 with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                    # FOR UPDATE 鎖定這筆訂單避免 race condition
+                    # Lock this booking row via FOR UPDATE to safely prevent concurrent cancellation race conditions
                     cur.execute(sql_check + " FOR UPDATE OF b", (booking_id, user_id))
                     row = cur.fetchone()
                     if not row:
@@ -638,7 +638,7 @@ def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | st
                     service_type = row['service_type']
                     amount = float(row['amount_usd'])
                     
-                    # 以 UTC 為基準計算時間差
+                    # Calculate the exact time difference relying purely on UTC for consistency
                     dep_dt = datetime.combine(travel_date, departure_time).replace(tzinfo=timezone.utc)
                     now_dt = datetime.now(timezone.utc)
                     
@@ -669,11 +669,11 @@ def execute_cancellation(booking_id: str, user_id: str) -> tuple[bool, dict | st
                     if refund_amount < 0:
                         refund_amount = 0.0
                         
-                    # 更新為 cancelled
+                    # Process cancellation: update the booking status to reflect the change
                     upd_sql = "UPDATE national_rail_bookings SET status = 'cancelled' WHERE booking_id = %s"
                     cur.execute(upd_sql, (booking_id,))
                     
-                    # 建立退款明細
+                    # Generate the refund payment record for the passenger
                     if refund_amount > 0:
                         payment_id = _gen_payment_id()
                         ins_pay_sql = """
