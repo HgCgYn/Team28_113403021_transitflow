@@ -999,7 +999,6 @@ def query_policy_vector_search(embedding: list[float], top_k: int = VECTOR_TOP_K
             content,
             1 - (embedding <=> %s::vector) AS similarity
         FROM policy_documents
-        WHERE 1 - (embedding <=> %s::vector) > %s
         ORDER BY embedding <=> %s::vector
         LIMIT %s
     """
@@ -1007,8 +1006,14 @@ def query_policy_vector_search(embedding: list[float], top_k: int = VECTOR_TOP_K
     try:
         with _connect() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(sql, (vec_str, vec_str, VECTOR_SIMILARITY_THRESHOLD, vec_str, top_k))
-                return [dict(row) for row in cur.fetchall()]
+                # NOTE: Removed WHERE clause to allow PostgreSQL to use the pgvector HNSW index.
+                #       HNSW indexes do not support range filters on distance.
+                cur.execute(sql, (vec_str, vec_str, top_k))
+                results = []
+                for row in cur.fetchall():
+                    if row["similarity"] > VECTOR_SIMILARITY_THRESHOLD:
+                        results.append(dict(row))
+                return results
     except psycopg2.Error as e:
         logger.error(f"DB Error in query_policy_vector_search: {e}")
         return []
