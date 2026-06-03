@@ -330,10 +330,10 @@ def seed_metro_travels(cur):
             item["travel_date"],
             item["ticket_type"],
             item.get("day_pass_ref"),
-            item.get("stops_travelled"),
+            item.get("stops_travelled") or 1,
             item["amount_usd"],
             item["status"],
-            item.get("purchased_at"),
+            item.get("purchased_at") or item.get("travelled_at") or "2026-04-06 12:00:00+00",
             item.get("travelled_at")
         ))
         

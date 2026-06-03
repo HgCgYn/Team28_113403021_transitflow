@@ -290,10 +290,14 @@ CREATE TABLE IF NOT EXISTS metro_travels (
     -- day_pass_ref points back to the originating day-pass trip_id
     -- (nullable; NULL means this trip is itself the day-pass purchase)
     day_pass_ref            VARCHAR(20)           REFERENCES metro_travels(trip_id) ON DELETE RESTRICT,
-    stops_travelled         SMALLINT              CHECK (stops_travelled >= 0),
+    -- NOTE: NOT NULL enforced here — a completed metro trip must have travelled at least 1 stop.
+    -- Consistency with national_rail_bookings which also enforces stops_travelled >= 1.
+    stops_travelled         SMALLINT              NOT NULL CHECK (stops_travelled >= 1),
     amount_usd              NUMERIC(10,2)         NOT NULL CHECK (amount_usd >= 0),
     status                  metro_trip_status_enum NOT NULL DEFAULT 'completed',
-    purchased_at            TIMESTAMPTZ,
+    -- NOTE: NOT NULL + DEFAULT ensures every trip record has a creation timestamp,
+    -- consistent with national_rail_bookings.booked_at NOT NULL DEFAULT NOW().
+    purchased_at            TIMESTAMPTZ           NOT NULL DEFAULT NOW(),
     travelled_at            TIMESTAMPTZ
 );
 
@@ -344,8 +348,10 @@ CREATE TABLE IF NOT EXISTS season_tickets (
     user_id           UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     ticket_type       season_ticket_type_enum NOT NULL,
     valid_from        DATE NOT NULL,
-    valid_until       DATE NOT NULL,
-    price_usd         NUMERIC(10,2) NOT NULL,
+    -- NOTE: CHECK ensures valid_until is strictly after valid_from.
+    -- Without this, a ticket expiring on its start date (or before) could be inserted.
+    valid_until       DATE NOT NULL CHECK (valid_until > valid_from),
+    price_usd         NUMERIC(10,2) NOT NULL CHECK (price_usd >= 0),
     network           VARCHAR(10) NOT NULL CHECK (network IN ('metro', 'rail', 'all')),
     status            season_ticket_status_enum NOT NULL DEFAULT 'active',
     purchased_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -398,6 +404,10 @@ CREATE INDEX IF NOT EXISTS idx_payments_booking_ref
 -- Feedback lookup by booking reference
 CREATE INDEX IF NOT EXISTS idx_feedback_booking_ref
     ON feedback(booking_ref);
+
+-- Task 6: delay compensation query always filters on (schedule_id, travel_date)
+CREATE INDEX IF NOT EXISTS idx_delay_records_schedule_date
+    ON delay_records(schedule_id, travel_date);
 
 
 -- ============================================================
