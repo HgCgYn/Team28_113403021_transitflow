@@ -12,7 +12,7 @@
 
 > Generated with [dbdiagram.io](https://dbdiagram.io). Relationships use **Crow's Foot notation**: a single vertical bar ( | ) represents the "one" side; a crow's foot ( ≪ ) represents the "many" side.
 
-![TransitFlow ER Diagram — Team28](./er_diagram.png)
+![TransitFlow ER Diagram — Team28](./er_diagram.svg)
 
 ### 1.2 Cardinality Summary
 
