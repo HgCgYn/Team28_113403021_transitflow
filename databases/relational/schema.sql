@@ -332,6 +332,9 @@ CREATE TABLE IF NOT EXISTS feedback (
 -- It allows the system to cross-reference a user's booking date and schedule with reported delays.
 -- PK Design Decision: We use VARCHAR(20) for delay_id to remain consistent with the legacy system's
 -- alphanumeric ID formats (e.g., 'DR-101') rather than migrating to UUIDs for this isolated feature.
+-- TASK 6 EXTENSION: This table and the idx_delay_records_schedule_date index below
+-- were added as part of the optional Task 6 delay compensation extension.
+-- See TASK6.md and Team28_DESIGN_DOC.md Section 7 for full details.
 CREATE TABLE IF NOT EXISTS delay_records (
     delay_id     VARCHAR(20) PRIMARY KEY,
     schedule_id  VARCHAR(20) NOT NULL REFERENCES national_rail_schedules(schedule_id) ON DELETE CASCADE,
