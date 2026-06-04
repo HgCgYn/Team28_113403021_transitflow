@@ -22,7 +22,7 @@
 | **Task 2c** — Write operations (`execute_booking`, `execute_cancellation`) | 黃丞胤 | 段景旻, 鄭志緬 | 段景旻 caught and fixed a missing coach condition in the pessimistic lock logic. 鄭志緬 joined design discussion. |
 | **Task 2d** — Authentication queries | 黃丞胤 | 段景旻, 鄭志緬 | 段景旻 and 鄭志緬 joined design discussions. |
 | **Task 3** — PostgreSQL seeding (`seed_postgres.py`) | 黃丞胤 | 段景旻, 鄭志緬 | 黃丞胤 wrote all seeding scripts and mock data JSON files. 段景旻 and 鄭志緬 discussed data structure. |
-| **Task 4** — Neo4j graph design & seeding (`seed_neo4j.py`, `seed.cypher`) | 黃丞胤 | 段景旻 | 黃丞胤 designed the graph schema and seeding logic. 段景旻 added idempotency to `seed_vectors.py` and handled dynamic embedding dimension changes. |
+| **Task 4** — Neo4j graph design & seeding (`seed_neo4j.py`, `seed.cypher`) | 黃丞胤 | 段景旻, 鄭志緬 | 黃丞胤 designed the graph schema and seeding logic. 段景旻 added idempotency to `seed_vectors.py` and handled dynamic embedding dimension changes. 鄭志緬 added dimension whitelist validation and HNSW skip logging to `seed_vectors.py`. |
 | **Task 5** — Neo4j query functions (`graph/queries.py`) | 段景旻 | 黃丞胤 | 段景旻 wrote `query_interchange_path` (with `is_cross_network` flag). 黃丞胤 wrote the remaining queries (`query_shortest_route`, `query_delay_ripple`, etc.). |
 | **Task 6** *(Extension)* — Delay Compensation Assistant | 鄭志緬 | 黃丞胤, 段景旻 | 鄭志緬 built the initial pipeline: compensation SQL, agent tools, refund policy docs (RF010–RF012), and test scripts. 黃丞胤 refined the implementation and brought Section 7 up to rubric. 段景旻 handled RAG verification and the HNSW threshold fix. |
 
@@ -46,7 +46,7 @@
 |--------|-----------|---------------------|
 | 黃丞胤 | 40% | Led the overall architecture. Responsible for the schema, Tasks 2a–2d, Task 3 seeding, Task 4, most graph queries, and the full design document (Sections 1–6). |
 | 段景旻 | 30% | Wrote `query_interchange_path` (Task 5); fixed the coach condition bug in `execute_booking`; built `seed_vectors.py` idempotency and dynamic dimension support; wrote RAG verification scripts; joined design discussions for Tasks 1–3. |
-| 鄭志緬 | 30% | Led Task 6 (compensation pipeline, agent tools, policies, tests); drafted Section 7; contributed to the pgvector HNSW fix; joined design discussions for Tasks 1–3. |
+| 鄭志緬 | 30% | Led Task 6 (compensation pipeline, agent tools, policies, tests); drafted Section 7; added dimension validation and HNSW skip logging to `seed_vectors.py` (Task 4); joined design discussions for Tasks 1–3. |
 | **Total** | **100%** | |
 
 ---
