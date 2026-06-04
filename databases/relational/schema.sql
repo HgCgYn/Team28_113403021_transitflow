@@ -424,7 +424,8 @@ CREATE TABLE IF NOT EXISTS policy_documents (
     content     TEXT         NOT NULL,
     -- 768-dim  → Ollama nomic-embed-text (default)
     -- 3072-dim → Gemini gemini-embedding-001
-    -- If you switch LLM_PROVIDER to gemini, change to vector(3072) and reset the database.
+    -- If you switch LLM_PROVIDER to gemini, run skeleton/seed_vectors.py.
+    -- The seed script will dynamically alter this column and rebuild the index.
     embedding   vector(768),
     source_file VARCHAR(200),
     created_at  TIMESTAMPTZ  DEFAULT NOW()
