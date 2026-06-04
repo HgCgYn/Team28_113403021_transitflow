@@ -93,6 +93,13 @@ def build_documents():
 
 def seed():
     documents = build_documents()
+
+    if llm.embed_dim not in (768, 3072):
+        raise ValueError(
+            f"Unsupported embedding dimension: {llm.embed_dim}. "
+            "Expected 768 for Ollama or 3072 for Gemini."
+        )
+
     print(f"Embedding {len(documents)} policy documents using {llm.chat_provider}...\n")
 
     # Ensure script idempotency: clear existing policy documents and dynamically adapt embedding schema
@@ -113,6 +120,10 @@ def seed():
             if llm.embed_dim <= 2000:
                 cur.execute(
                     "CREATE INDEX IF NOT EXISTS idx_policy_documents_embedding ON policy_documents USING hnsw (embedding vector_cosine_ops);"
+                )
+            else:
+                print(
+                    "    NOTE: embedding dimension exceeds 2000, so pgvector HNSW index is skipped."
                 )
         conn.commit()
 
