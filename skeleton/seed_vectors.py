@@ -19,9 +19,16 @@ train-mock-data/ and re-run this script.
 """
 
 import json
+import logging
 import os
 import sys
 import time
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s  %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 import psycopg2
 
@@ -100,10 +107,10 @@ def seed():
             "Expected 768 for Ollama or 3072 for Gemini."
         )
 
-    print(f"Embedding {len(documents)} policy documents using {llm.chat_provider}...\n")
+    logger.info("Embedding %d policy documents using %s...", len(documents), llm.chat_provider)
 
     # Ensure script idempotency: clear existing policy documents and dynamically adapt embedding schema
-    print("  Clearing existing policy documents and adapting embedding schema...")
+    logger.info("Clearing existing policy documents and adapting embedding schema...")
     with psycopg2.connect(PG_DSN) as conn:
         with conn.cursor() as cur:
             # Step 1: Must truncate first—if old data exists and we alter the type, direct type conversion fails
@@ -122,20 +129,26 @@ def seed():
                     "CREATE INDEX IF NOT EXISTS idx_policy_documents_embedding ON policy_documents USING hnsw (embedding vector_cosine_ops);"
                 )
             else:
-                print(
-                    "    NOTE: embedding dimension exceeds 2000, so pgvector HNSW index is skipped."
+                logger.warning(
+                    "Embedding dimension %d exceeds 2000 — pgvector HNSW index skipped. "
+                    "Falling back to exact search.",
+                    llm.embed_dim,
                 )
         conn.commit()
 
     for i, doc in enumerate(documents):
-        print(f"  [{i+1}/{len(documents)}] Embedding: {doc['title']}")
+        logger.info("[%d/%d] Embedding: %s", i + 1, len(documents), doc["title"])
 
         try:
             embedding = llm.embed(doc["content"])
 
             if len(embedding) != llm.embed_dim:
-                print(f"    WARN: Unexpected embedding dim: {len(embedding)} (expected {llm.embed_dim})")
-                print(f"    Update GEMINI_EMBED_DIM or OLLAMA_EMBED_DIM in skeleton/config.py")
+                logger.warning(
+                    "Unexpected embedding dim: %d (expected %d). "
+                    "Update GEMINI_EMBED_DIM or OLLAMA_EMBED_DIM in skeleton/config.py.",
+                    len(embedding),
+                    llm.embed_dim,
+                )
                 sys.exit(1)
 
             doc_id = store_policy_document(
@@ -145,21 +158,19 @@ def seed():
                 embedding=embedding,
                 source_file=doc.get("source_file", ""),
             )
-            print(f"    OK Stored as document id={doc_id}")
+            logger.info("  OK  Stored as document id=%s", doc_id)
 
         except Exception as e:
-            print(f"    ERR Failed: {e}")
+            logger.error("Failed to embed/store document '%s': %s", doc["title"], e)
             raise
 
         if llm.chat_provider == "gemini" and i < len(documents) - 1:
             time.sleep(0.5)
 
-    print(f"\nAll {len(documents)} policy documents embedded and stored.")
-    print("   Test with a similarity search:")
-    print("   >>> from skeleton.llm_provider import llm")
-    print("   >>> from databases.relational.queries import query_policy_vector_search")
-    print("   >>> results = query_policy_vector_search(llm.embed('can I get a refund for a delay?'))")
-    print("   >>> print(results[0]['title'])")
+    logger.info("All %d policy documents embedded and stored.", len(documents))
+    logger.info(
+        "Test with: query_policy_vector_search(llm.embed('can I get a refund for a delay?'))"
+    )
 
 
 if __name__ == "__main__":
