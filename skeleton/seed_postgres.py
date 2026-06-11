@@ -9,6 +9,8 @@ You must first design and create your tables in databases/relational/schema.sql.
 Safe to re-run: implement your inserts with ON CONFLICT DO NOTHING.
 """
 
+# TASK 6 EXTENSION: Adds seed_delay_records() function to populate the delay_records table.
+
 import json
 import os
 import sys

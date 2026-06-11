@@ -6,6 +6,10 @@ Run once after starting Docker:
 Loads station and network data from train-mock-data/:
   - metro_stations.json         — city metro stations and adjacencies
   - national_rail_stations.json — national rail stations and adjacencies
+
+Idempotency: Every write operation uses MERGE, so this script is safe to
+re-run against a live database. Existing nodes and relationships will have
+their properties updated in-place; nothing is deleted or duplicated.
 """
 
 import json
@@ -34,10 +38,11 @@ def seed():
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     with driver.session() as session:
 
-        session.run("MATCH (n) DETACH DELETE n")
-        print("  Cleared existing graph data")
+        # NOTE: No DETACH DELETE here — all writes use MERGE so the script is
+        # idempotent. Re-running will update existing nodes/relationships in-place
+        # without creating duplicates or losing data already in the graph.
 
-        # 1. Create Metro Station Nodes
+        # 1. Create / update Metro Station Nodes
         for st in metro_stations:
             session.run(
                 """
